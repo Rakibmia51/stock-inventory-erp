@@ -1,0 +1,28 @@
+# Environment variables (Security)
+.env
+.env.*
+!.env.example
+
+# Dependencies
+node_modules/
+venv/
+.venv/
+vendor/
+__pycache__/
+
+# Build & Logs
+dist/
+build/
+logs/
+*.log
+
+# Local Database & Uploads
+*.sqlite
+*.db
+uploads/
+
+# OS & Editor files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
