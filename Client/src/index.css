@@ -1,0 +1,28 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+@import "tailwindcss";
+
+
+@media print {
+  /* প্রিন্ট করার সময় ব্যাকগ্রাউন্ড ও অন্য সব কিছু লুকিয়ে ফেলা */
+  body * {
+    visibility: hidden;
+  }
+  
+  /* শুধু ইনভয়েস কার্ড এবং এর ভেতরের লেখা দৃশ্যমান করা */
+  .printable-invoice, .printable-invoice * {
+    visibility: visible;
+  }
+  
+  .printable-invoice {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    margin: 0;
+    padding: 10px;
+    box-shadow: none !important;
+    background: white !important;
+  }
+}

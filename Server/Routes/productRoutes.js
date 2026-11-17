@@ -6,11 +6,12 @@ const {
   updateStock,
   deleteProduct
 } = require('../Controllers/productController');
+const { protect, adminOnly } = require('../middleware/authMiddleware');
 
 // রাউটস ডিফিনিশন
-router.get('/', getProducts);
-router.post('/', createProduct);
-router.patch('/:id/stock', updateStock);
-router.delete('/:id', deleteProduct);
+router.get('/', protect, getProducts);
+router.post('/', protect, adminOnly, createProduct);
+router.patch('/:id/stock', protect, adminOnly, updateStock);
+router.delete('/:id', protect, adminOnly, deleteProduct);
 
 module.exports = router;
