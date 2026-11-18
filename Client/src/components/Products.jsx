@@ -110,10 +110,14 @@ export default function Products({ products, reloadData, user }) {
                     </td>
                    <td className="py-4 px-5">
                     <div className="flex items-center justify-end gap-2">
-                      <button onClick={() => handleStock(p._id, 'IN')} title="Stock In" className="bg-emerald-50 hover:bg-emerald-100 text-emerald-700 px-2.5 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1 transition">
+                      <button 
+                      //onClick={} 
+                      title="Stock In" className="bg-emerald-50 hover:bg-emerald-100 text-emerald-700 px-2.5 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1 transition">
                         <ArrowUpRight className="w-3.5 h-3.5" /> In
                       </button>
-                      <button onClick={() => handleStock(p._id, 'OUT')} title="Stock Out" className="bg-amber-50 hover:bg-amber-100 text-amber-700 px-2.5 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1 transition">
+                      <button 
+                      // onClick={} 
+                      title="Stock Out" className="bg-amber-50 hover:bg-amber-100 text-amber-700 px-2.5 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1 transition">
                         <ArrowDownRight className="w-3.5 h-3.5" /> Out
                       </button>
                       

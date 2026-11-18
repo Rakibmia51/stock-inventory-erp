@@ -1,7 +1,8 @@
 import axios from 'axios';
 
+
 const API = axios.create({
-  baseURL: 'http://localhost:5000/api'
+  baseURL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api'
 });
 
 // Request Interceptor: প্রতিটি রিকোয়েস্টের সাথে টোকেন যুক্ত করা
