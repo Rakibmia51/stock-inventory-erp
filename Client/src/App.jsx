@@ -89,13 +89,55 @@ export default function App() {
 
         {/* Main Workspace */}
         <main className="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-8">
-          {activeTab === 'dashboard' && <Dashboard products={products} suppliers={suppliers} clients={clients} />}
-          {activeTab === 'products' && <Products products={products} reloadData={loadData} user={user} />}
-          {activeTab === 'suppliers' && <Suppliers suppliers={suppliers} reloadData={loadData} />}
-          {activeTab === 'clients' && <Clients clients={clients} reloadData={loadData} />}
-          {activeTab === 'purchases' && <Purchases suppliers={suppliers} products={products} purchases={purchases} reloadData={loadData} />}
-          {activeTab === 'invoices' && <Invoices clients={clients} products={products} invoices={invoices} reloadData={loadData} />}
-          {activeTab === 'users' && <UserManagement currentUser={user} />}
+          {activeTab === 'dashboard' && 
+            <Dashboard 
+              products={products} 
+              suppliers={suppliers} 
+              clients={clients} 
+              invoices={invoices}
+              purchases={purchases}
+              user={user} 
+            />}
+          {activeTab === 'products' && 
+            <Products 
+              products={products} 
+              reloadData={loadData} 
+              user={user} 
+            />}
+          {activeTab === 'suppliers' && 
+            <Suppliers 
+              suppliers={suppliers} 
+              reloadData={loadData} 
+              user={user} 
+            />}
+          {activeTab === 'clients' && 
+            <Clients 
+              clients={clients} 
+              reloadData={loadData} 
+              user={user} 
+            />}
+          {activeTab === 'purchases' && 
+            <Purchases 
+              suppliers={suppliers} 
+              products={products} 
+              purchases={purchases} 
+              reloadData={loadData} 
+              user={user} 
+            />}
+          {activeTab === 'invoices' && 
+            <Invoices 
+              clients={clients} 
+              products={products} 
+              invoices={invoices} 
+              reloadData={loadData} 
+              user={user} 
+            />}
+          {activeTab === 'users' && 
+            <UserManagement 
+              currentUser={user} 
+              reloadData={loadData} 
+              user={user} 
+            />}
         </main>
       </div>
     </div>

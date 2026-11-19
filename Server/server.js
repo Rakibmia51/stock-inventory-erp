@@ -13,6 +13,7 @@ const clientRoutes = require('./Routes/clientRoutes');
 const purchaseRoutes = require('./Routes/purchaseRoutes');  
 const invoiceRoutes = require('./Routes/invoiceRoutes'); 
 const authRoutes = require('./Routes/authRoutes');  
+const returnRoutes = require('./Routes/returnRoutes');
 
 const app = express()
 app.use(cors({
@@ -62,10 +63,15 @@ seedAdmin();
 
 // API Endpoints
 app.use('/api/products', productRoutes);
+
 app.use('/api/suppliers', supplierRoutes);
+
 app.use('/api/clients', clientRoutes);
+
 app.use('/api/purchases', purchaseRoutes);
 app.use('/api/invoices', invoiceRoutes);
+app.use('/api/returns', returnRoutes);
+
 app.use('/api/auth', authRoutes);
 
 

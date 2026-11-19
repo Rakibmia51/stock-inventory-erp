@@ -21,14 +21,38 @@ const createClient = async (req, res) => {
   }
 };
 
+// ক্লায়েন্ট তথ্য এডিট / আপডেট করা
+const updateClient = async (req, res) => {
+  try {
+    const updatedClient = await Client.findByIdAndUpdate(
+      req.params.id,
+      req.body,
+      { new: true, runValidators: true }
+    );
+
+    if (!updatedClient) {
+      return res.status(404).json({ message: 'Client not found' });
+    }
+
+    res.json(updatedClient);
+  } catch (err) {
+    res.status(400).json({ message: err.message });
+  }
+};
+
 // ক্লায়েন্ট ডিলিট করা
 const deleteClient = async (req, res) => {
   try {
-    await Client.findByIdAndDelete(req.params.id);
+    const deletedClient = await Client.findByIdAndDelete(req.params.id);
+
+    if (!deletedClient) {
+      return res.status(404).json({ message: 'Client not found' });
+    }
+
     res.json({ message: 'Client deleted successfully' });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
 };
 
-module.exports = { getClients, createClient, deleteClient };
+module.exports = { getClients, createClient, updateClient, deleteClient };

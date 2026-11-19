@@ -41,15 +41,24 @@ export const getProducts = () => API.get('/products');
 export const addProduct = (data) => API.post('/products', data);
 export const updateStock = (id, data) => API.patch(`/products/${id}/stock`, data);
 export const deleteProduct = (id) => API.delete(`/products/${id}`);
+export const returnProductStock = (id, data) => API.post(`/products/${id}/return`, data);
+export const getReturns = () => API.get('/returns');
+export const createReturn = (data) => API.post('/returns', data);
 
 export const getSuppliers = () => API.get('/suppliers');
 export const addSupplier = (data) => API.post('/suppliers', data);
+export const updateSupplier = (id, data) => API.put(`/suppliers/${id}`, data);
+export const deleteSupplier = (id) => API.delete(`/suppliers/${id}`);
 
 export const getClients = () => API.get('/clients');
 export const addClient = (data) => API.post('/clients', data);
+export const updateClient = (id, data) => API.put(`/clients/${id}`, data);
+export const deleteClient = (id) => API.delete(`/clients/${id}`);
 
 export const getPurchases = () => API.get('/purchases');
 export const addPurchase = (data) => API.post('/purchases', data);
+export const deletePurchase = (id) => API.delete(`/purchases/${id}`);
 
 export const getInvoices = () => API.get('/invoices');
 export const createInvoice = (data) => API.post('/invoices', data);
+export const deleteInvoice = (id) => API.delete(`/invoices/${id}`);
