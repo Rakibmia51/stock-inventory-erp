@@ -62,3 +62,8 @@ export const deletePurchase = (id) => API.delete(`/purchases/${id}`);
 export const getInvoices = () => API.get('/invoices');
 export const createInvoice = (data) => API.post('/invoices', data);
 export const deleteInvoice = (id) => API.delete(`/invoices/${id}`);
+
+// Accounts Module APIs
+export const getAccountTransactions = () => API.get('/accounts');
+export const addAccountTransaction = (data) => API.post('/accounts', data);
+export const deleteAccountTransaction = (id) => API.delete(`/accounts/${id}`);

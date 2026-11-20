@@ -14,6 +14,7 @@ const purchaseRoutes = require('./Routes/purchaseRoutes');
 const invoiceRoutes = require('./Routes/invoiceRoutes'); 
 const authRoutes = require('./Routes/authRoutes');  
 const returnRoutes = require('./Routes/returnRoutes');
+const accountRoutes = require('./Routes/accountRoutes');
 
 const app = express()
 app.use(cors({
@@ -71,6 +72,9 @@ app.use('/api/clients', clientRoutes);
 app.use('/api/purchases', purchaseRoutes);
 app.use('/api/invoices', invoiceRoutes);
 app.use('/api/returns', returnRoutes);
+
+app.use('/api/accounts', accountRoutes);
+
 
 app.use('/api/auth', authRoutes);
 
