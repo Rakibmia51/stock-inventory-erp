@@ -4,13 +4,16 @@ const {
   getProducts,
   createProduct,
   updateStock,
-  deleteProduct
+  deleteProduct,
+  handleProductReturn
 } = require('../Controllers/productController');
+const { protect, adminOnly, checkPermission } = require('../middleware/authMiddleware');
 
 // রাউটস ডিফিনিশন
-router.get('/', getProducts);
-router.post('/', createProduct);
-router.patch('/:id/stock', updateStock);
-router.delete('/:id', deleteProduct);
+router.get('/', protect, checkPermission('products'), getProducts);
+router.post('/', protect, checkPermission('products'), createProduct);
+router.post('/:id/return', protect, checkPermission('products'), handleProductReturn);
+router.patch('/:id/stock', protect, checkPermission('products'), updateStock);
+router.delete('/:id', protect, adminOnly, deleteProduct);
 
 module.exports = router;
