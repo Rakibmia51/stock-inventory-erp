@@ -67,3 +67,7 @@ export const deleteInvoice = (id) => API.delete(`/invoices/${id}`);
 export const getAccountTransactions = () => API.get('/accounts');
 export const addAccountTransaction = (data) => API.post('/accounts', data);
 export const deleteAccountTransaction = (id) => API.delete(`/accounts/${id}`);
+
+// Settings Module APIs
+export const getSettings = () => API.get('/settings');
+export const updateSettings = (data) => API.put('/settings', data);
