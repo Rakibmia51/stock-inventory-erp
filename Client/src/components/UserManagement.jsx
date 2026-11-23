@@ -21,6 +21,7 @@ export default function UserManagement({ currentUser }) {
       purchases: false,
       invoices: false,
       accounts: false,
+      reports: false,
       users: false
     }
   });
@@ -87,7 +88,8 @@ export default function UserManagement({ currentUser }) {
             clients: false, 
             purchases: false, 
             invoices: false, 
-            accounts: false 
+            accounts: false,
+            reports: false, 
           }
       });
       fetchUsers();
@@ -112,6 +114,7 @@ const modules = [
   { key: 'purchases', label: 'Purchase Orders' },
   { key: 'invoices', label: 'Sales & Invoices' },
   { key: 'accounts', label: 'Accounts / Finance' },
+  { key: 'reports', label: 'Reports' },
   { key: 'users', label: 'User Management' } // নতুন চেক বক্স
 ];
 

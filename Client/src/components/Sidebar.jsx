@@ -16,7 +16,8 @@ import {
   ChevronDown,
   ChevronRight,
   TrendingUp,
-  CalendarClock
+  CalendarClock,
+  FileSpreadsheet
 } from 'lucide-react';
 
 export default function Sidebar({
@@ -88,6 +89,12 @@ export default function Sidebar({
   ];
 
   const bottomMenuItems = [
+    {
+      id: 'reports',
+      label: 'All Reports',
+      icon: FileSpreadsheet,
+      show: isAdmin || Boolean(user?.permissions?.reports)
+    },
     {
       id: 'users',
       label: 'User Management',

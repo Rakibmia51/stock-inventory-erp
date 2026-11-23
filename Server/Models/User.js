@@ -17,6 +17,7 @@ const userSchema = new mongoose.Schema({
     purchases: { type: Boolean, default: false },
     invoices: { type: Boolean, default: false },
     accounts: { type: Boolean, default: false },
+    reports: { type: Boolean, default: false },
     users:{type: Boolean, default: false}
   }
 }, { timestamps: true });

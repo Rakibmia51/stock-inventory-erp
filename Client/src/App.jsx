@@ -23,6 +23,7 @@ import {
 import PartyLedger from './components/PartyLedger';
 import ProfitLoss from './components/ProfitLoss';
 import CashFlowDayBook from './components/CashFlowDayBook';
+import AllReports from './components/AllReports';
 
 const normalizeArray = (res, key) => {
   const payload = res?.data;
@@ -261,6 +262,22 @@ export default function App() {
               user={user}
             />
           )}
+
+          {activeTab === 'reports' && (
+            <AllReports
+              products={products}
+              suppliers={suppliers}
+              clients={clients}
+              invoices={invoices}
+              purchases={purchases}
+              transactions={accountTransactions}
+              accountTransactions={accountTransactions}
+              
+              reloadData={loadData}
+              user={user}
+            />
+          )}
+
         </main>
       </div>
     </div>

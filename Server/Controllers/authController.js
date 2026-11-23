@@ -31,6 +31,7 @@ const createUser = async (req, res) => {
         purchases: false,
         invoices: false,
         accounts: false,
+        reports: false,
         users: false
       }
     });
@@ -70,7 +71,8 @@ const registerUser = async (req, res) => {
       clients: isAdmin,
       purchases: isAdmin,
       invoices: isAdmin,
-      accounts: isAdmin
+      accounts: isAdmin,
+      reports: isAdmin,
     };
 
     const user = await User.create({
@@ -112,6 +114,7 @@ const loginUser = async (req, res) => {
         purchases: isAdmin,
         invoices: isAdmin,
         accounts: isAdmin,
+        reports: isAdmin,
         users: isAdmin
       };
 
