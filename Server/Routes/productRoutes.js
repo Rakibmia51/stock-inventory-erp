@@ -10,7 +10,7 @@ const {
 const { protect, adminOnly, checkPermission } = require('../middleware/authMiddleware');
 
 // রাউটস ডিফিনিশন
-router.get('/', protect, checkPermission('products'), getProducts);
+router.get('/', protect, getProducts);
 router.post('/', protect, checkPermission('products'), createProduct);
 router.post('/:id/return', protect, checkPermission('products'), handleProductReturn);
 router.patch('/:id/stock', protect, checkPermission('products'), updateStock);

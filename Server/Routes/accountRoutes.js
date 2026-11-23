@@ -8,7 +8,7 @@ const {
 const { protect, checkPermission } = require('../middleware/authMiddleware');
 
 // সব অ্যাকাউন্টস ট্রানজ্যাকশন দেখা (Income, Expense, Others, Due Collection, Supplier Payment)
-router.get('/', protect, checkPermission('accounts'), getTransactions);
+router.get('/', protect, getTransactions);
 
 // নতুন এন্ট্রি তৈরি করা
 router.post('/', protect, checkPermission('accounts'), createTransaction);
