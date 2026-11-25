@@ -8,7 +8,8 @@ import {
   ChevronLeft,
   ChevronRight,
   PlusCircle,
-  Plus
+  Plus,
+  Receipt
 } from 'lucide-react';
 import { addPurchase, deletePurchase } from '../services/api';
 import { DEFAULT_ERP_SETTINGS } from './Settings';
@@ -738,7 +739,7 @@ export default function Purchases({
         </div>
       </div>
 
-      {/* Purchase Invoice View & Print Modal */}
+{/* Purchase Invoice View & Print Modal */}
       {selectedPurchase && (() => {
         const activeSettings = {
           ...DEFAULT_ERP_SETTINGS,
@@ -755,19 +756,224 @@ export default function Purchases({
             ? Number(selectedPurchase.dueAmount || 0)
             : Math.max(0, totalAmt - paidAmt);
 
+        const poCode =
+          selectedPurchase.purchaseNumber ||
+          `#${String(selectedPurchase._id || '').slice(-6).toUpperCase() || 'PO'}`;
+
+        const poDateText = selectedPurchase.createdAt
+          ? new Date(selectedPurchase.createdAt).toLocaleDateString()
+          : new Date().toLocaleDateString();
+
+        const methodText = `${selectedPurchase.paymentMethod || 'Cash'}${
+          selectedPurchase.mobileProvider ? ` (${selectedPurchase.mobileProvider})` : ''
+        }`;
+
+        const supplierDisplayName =
+          selectedPurchase.supplier?.companyName ||
+          selectedPurchase.supplier?.name ||
+          'Unknown Supplier';
+
+        const purchaseItems = Array.isArray(selectedPurchase.items)
+          ? selectedPurchase.items
+          : [];
+
+        const handleStandardPurchasePrint = () => {
+          if (typeof handlePrint === 'function') {
+            handlePrint();
+            return;
+          }
+
+          const printContent =
+            document.getElementById('printable-purchase-invoice')?.innerHTML || '';
+          const printWindow = window.open('', '_blank', 'height=750,width=860');
+          if (!printWindow) return;
+
+          printWindow.document.write(`
+            <html>
+              <head>
+                <title>Purchase Invoice - ${poCode}</title>
+                <style>
+                  body { font-family: Arial, sans-serif; padding: 24px; color: #0f172a; margin: 0; }
+                  table { width: 100%; border-collapse: collapse; margin: 14px 0; font-size: 12px; }
+                  th, td { border-bottom: 1px solid #cbd5e1; padding: 7px 6px; text-align: left; }
+                  th { background: #f1f5f9; font-weight: bold; }
+                  .text-right { text-align: right; }
+                </style>
+              </head>
+              <body>
+                ${printContent}
+              </body>
+            </html>
+          `);
+
+          printWindow.document.close();
+          printWindow.focus();
+          setTimeout(() => {
+            printWindow.print();
+            printWindow.close();
+          }, 400);
+        };
+
+        const handlePosPurchasePrint = () => {
+          const posWindow = window.open('', '_blank', 'height=680,width=380');
+          if (!posWindow) return;
+
+          const itemsHtml = purchaseItems
+            .map(item => {
+              const qty = Number(item.quantity ?? item.qty ?? 0);
+              const unitPrice = Number(
+                item.purchasePrice ?? item.buyPrice ?? item.unitPrice ?? 0
+              );
+              const lineTotal = Number(item.lineTotal ?? item.total ?? qty * unitPrice);
+              const prodName = item.product?.name || item.name || 'Product';
+              const skuText = item.product?.sku ? ` [${item.product.sku}]` : '';
+
+              return `
+                <tr>
+                  <td colspan="3" class="item-name">${prodName}${skuText}</td>
+                </tr>
+                <tr class="item-meta">
+                  <td>${qty.toLocaleString()} x ${currency}${unitPrice.toLocaleString()}</td>
+                  <td></td>
+                  <td class="text-right">${currency}${lineTotal.toLocaleString()}</td>
+                </tr>
+              `;
+            })
+            .join('');
+
+          const logoHtml = hasLogo
+            ? `<img src="${activeSettings.logoUrl}" alt="${companyTitle}" class="pos-logo" />`
+            : '';
+
+          const footerNote = activeSettings.invoiceFooter || 'Stock-In Purchase Receipt';
+
+          posWindow.document.write(`
+            <html>
+              <head>
+                <title>POS Purchase - ${poCode}</title>
+                <style>
+                  @page { size: 80mm auto; margin: 0; }
+                  body {
+                    font-family: 'Courier New', Courier, monospace;
+                    width: 76mm;
+                    max-width: 100%;
+                    margin: 0 auto;
+                    padding: 6mm 3mm;
+                    color: #000;
+                    font-size: 11px;
+                    line-height: 1.35;
+                  }
+                  .center { text-align: center; }
+                  .text-right { text-align: right; }
+                  .bold { font-weight: bold; }
+                  .pos-logo {
+                    max-width: 44px;
+                    max-height: 44px;
+                    object-fit: contain;
+                    display: block;
+                    margin: 0 auto 4px auto;
+                  }
+                  .shop-name { font-size: 14px; font-weight: bold; margin: 0; }
+                  .muted { font-size: 10px; margin: 1px 0; }
+                  .divider { border-top: 1px dashed #000; margin: 6px 0; }
+                  .row { display: flex; justify-content: space-between; font-size: 10.5px; margin: 2px 0; }
+                  table { width: 100%; border-collapse: collapse; margin: 4px 0; }
+                  .item-name { font-weight: bold; font-size: 10.5px; padding-top: 4px; }
+                  .item-meta td { font-size: 10px; padding-bottom: 4px; border-bottom: 1px dotted #999; }
+                  .total-row { font-size: 12px; font-weight: bold; margin-top: 4px; }
+                  .footer { text-align: center; font-size: 10px; margin-top: 10px; }
+                </style>
+              </head>
+              <body>
+                <div class="center">
+                  ${logoHtml}
+                  <p class="shop-name">${companyTitle}</p>
+                  <p class="muted bold">PURCHASE RECEIPT</p>
+                  ${activeSettings.address ? `<p class="muted">${activeSettings.address}</p>` : ''}
+                  ${activeSettings.phone ? `<p class="muted">Tel: ${activeSettings.phone}</p>` : ''}
+                  ${activeSettings.taxId ? `<p class="muted">BIN/VAT: ${activeSettings.taxId}</p>` : ''}
+                </div>
+
+                <div class="divider"></div>
+
+                <div class="row">
+                  <span><strong>PO:</strong> ${poCode}</span>
+                  <span>${poDateText}</span>
+                </div>
+                <div class="row">
+                  <span><strong>Supplier:</strong> ${supplierDisplayName}</span>
+                </div>
+                <div class="row">
+                  <span><strong>Pay Mode:</strong> ${methodText}</span>
+                </div>
+
+                <div class="divider"></div>
+
+                <table>
+                  <tbody>
+                    ${itemsHtml}
+                  </tbody>
+                </table>
+
+                <div class="divider"></div>
+
+                <div class="row total-row">
+                  <span>GRAND TOTAL:</span>
+                  <span>${currency}${totalAmt.toLocaleString()}</span>
+                </div>
+                <div class="row">
+                  <span>Paid:</span>
+                  <span>${currency}${paidAmt.toLocaleString()}</span>
+                </div>
+                <div class="row bold">
+                  <span>Due:</span>
+                  <span>${currency}${dueAmt.toLocaleString()}</span>
+                </div>
+
+                ${
+                  selectedPurchase.note
+                    ? `<div class="divider"></div><p class="muted"><strong>Note:</strong> ${selectedPurchase.note}</p>`
+                    : ''
+                }
+
+                <div class="divider"></div>
+
+                <div class="footer">
+                  <p>${footerNote}</p>
+                  <p class="muted">Powered by ${companyTitle}</p>
+                </div>
+              </body>
+            </html>
+          `);
+
+          posWindow.document.close();
+          posWindow.focus();
+          setTimeout(() => {
+            posWindow.print();
+            posWindow.close();
+          }, 400);
+        };
+
         return (
           <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-3 sm:p-4">
             <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full p-4 sm:p-6 max-h-[92vh] overflow-y-auto">
               {/* Top Bar */}
               <div className="flex flex-wrap justify-between items-center border-b pb-3 mb-5 gap-2 no-print">
                 <h3 className="text-base font-bold text-slate-800">Purchase Invoice Preview</h3>
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2">
                   <button
                     type="button"
-                    onClick={handlePrint}
+                    onClick={handleStandardPurchasePrint}
                     className="bg-indigo-600 hover:bg-indigo-700 text-white px-3.5 py-1.5 rounded-lg text-xs font-semibold inline-flex items-center gap-1.5 transition"
                   >
                     <Printer className="w-4 h-4" /> Print Invoice
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handlePosPurchasePrint}
+                    className="bg-slate-800 hover:bg-slate-900 text-white px-3.5 py-1.5 rounded-lg text-xs font-semibold inline-flex items-center gap-1.5 transition"
+                  >
+                    <Receipt className="w-4 h-4" /> POS Print
                   </button>
                   <button
                     type="button"
@@ -812,18 +1018,10 @@ export default function Purchases({
                   </div>
 
                   <div className="sm:text-right text-xs space-y-1 shrink-0">
-                    <p className="font-bold text-sm text-slate-800">
-                      PO ID:{' '}
-                      {selectedPurchase.purchaseNumber ||
-                        `#${selectedPurchase._id?.slice(-6).toUpperCase()}`}
-                    </p>
+                    <p className="font-bold text-sm text-slate-800">PO ID: {poCode}</p>
+                    <p className="text-slate-600">Date: {poDateText}</p>
                     <p className="text-slate-600">
-                      Date: {new Date(selectedPurchase.createdAt).toLocaleDateString()}
-                    </p>
-                    <p className="text-slate-600">
-                      Method:{' '}
-                      <span className="font-semibold">{selectedPurchase.paymentMethod || 'Cash'}</span>
-                      {selectedPurchase.mobileProvider ? ` (${selectedPurchase.mobileProvider})` : ''}
+                      Method: <span className="font-semibold">{methodText}</span>
                     </p>
                   </div>
                 </div>
@@ -833,11 +1031,7 @@ export default function Purchases({
                   <p className="text-xs font-semibold uppercase text-slate-400 mb-1">
                     Supplier Details
                   </p>
-                  <p className="font-bold text-slate-900">
-                    {selectedPurchase.supplier?.companyName ||
-                      selectedPurchase.supplier?.name ||
-                      'Unknown Supplier'}
-                  </p>
+                  <p className="font-bold text-slate-900">{supplierDisplayName}</p>
                   {selectedPurchase.supplier?.name && selectedPurchase.supplier?.companyName && (
                     <p className="text-xs text-slate-600">
                       Contact: {selectedPurchase.supplier.name}
@@ -863,7 +1057,7 @@ export default function Purchases({
                       </tr>
                     </thead>
                     <tbody className="divide-y">
-                      {(selectedPurchase.items || []).map((item, index) => {
+                      {purchaseItems.map((item, index) => {
                         const qty = Number(item.quantity || 0);
                         const unitPrice = Number(item.purchasePrice || 0);
                         const lineTotal = qty * unitPrice;

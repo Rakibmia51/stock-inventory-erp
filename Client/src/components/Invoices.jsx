@@ -702,7 +702,9 @@ import {
   Trash2,
   FileText,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  Printer,
+  Receipt
 } from 'lucide-react';
 import { createInvoice, deleteInvoice } from '../services/api';
 import { DEFAULT_ERP_SETTINGS } from './Settings';
@@ -909,6 +911,50 @@ export default function Invoices({
   };
 
   // প্রিন্ট ফাংশন (কোম্পানির তথ্য, লোগো, ফুটার ও সিগনেচারসহ)
+  // const handlePrint = () => {
+  //   if (!previewInvoice) return;
+  //   const printContent = document.getElementById('printable-invoice-area')?.innerHTML || '';
+  //   const printWindow = window.open('', '_blank', 'height=700,width=800');
+  //   if (!printWindow) return;
+
+  //   printWindow.document.write(`
+  //     <html>
+  //       <head>
+  //         <title>Invoice - ${previewInvoice.invoiceNumber}</title>
+  //         <style>
+  //           body { font-family: Arial, sans-serif; padding: 25px; color: #1e293b; margin: 0; }
+  //           h3 { margin: 0 0 4px 0; font-size: 20px; color: #0f172a; }
+  //           p { margin: 2px 0; font-size: 12px; color: #475569; }
+  //           .header { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid #e2e8f0; padding-bottom: 12px; margin-bottom: 15px; gap: 12px; }
+  //           .brand-box { display: flex; align-items: flex-start; gap: 10px; }
+  //           .brand-logo { width: 46px; height: 46px; object-fit: contain; border: 1px solid #e2e8f0; border-radius: 8px; padding: 3px; }
+  //           .flex-between { display: flex; justify-content: space-between; margin-bottom: 15px; font-size: 13px; }
+  //           table { width: 100%; border-collapse: collapse; margin-bottom: 20px; font-size: 13px; }
+  //           th, td { border-bottom: 1px solid #cbd5e1; padding: 8px; text-align: left; }
+  //           th { background-color: #f1f5f9; color: #334155; }
+  //           .text-right { text-align: right; }
+  //           .summary { text-align: right; font-size: 13px; line-height: 1.6; margin-bottom: 30px; }
+  //           .grand-total { font-size: 15px; font-weight: bold; color: #0f172a; }
+  //           .footer-note { text-align: center; font-size: 12px; color: #64748b; margin-top: 24px; border-top: 1px dashed #cbd5e1; padding-top: 10px; }
+  //           .signature-section { display: flex; justify-content: space-between; margin-top: 60px; padding-top: 10px; }
+  //           .signature-box { width: 180px; text-align: center; border-top: 1px solid #64748b; font-size: 12px; font-weight: bold; color: #475569; padding-top: 5px; }
+  //         </style>
+  //       </head>
+  //       <body>
+  //         ${printContent}
+  //       </body>
+  //     </html>
+  //   `);
+
+  //   printWindow.document.close();
+  //   printWindow.focus();
+  //   setTimeout(() => {
+  //     printWindow.print();
+  //     printWindow.close();
+  //   }, 500);
+  // };
+
+  // Standard / A4 প্রিন্ট ফাংশন (কোম্পানির তথ্য, লোগো, ফুটার ও সিগনেচারসহ)
   const handlePrint = () => {
     if (!previewInvoice) return;
     const printContent = document.getElementById('printable-invoice-area')?.innerHTML || '';
@@ -951,6 +997,179 @@ export default function Invoices({
       printWindow.close();
     }, 500);
   };
+
+  // POS Thermal Printer (80mm) ফাংশন
+  const handlePosPrint = () => {
+    if (!previewInvoice) return;
+
+    const activeSettings = {
+      ...DEFAULT_ERP_SETTINGS,
+      ...(settings || {})
+    };
+    const currency = activeSettings.currencySymbol || '৳';
+    const companyTitle = (activeSettings.companyName || 'NEXUS ERP').trim();
+
+    const posWindow = window.open('', '_blank', 'height=680,width=380');
+    if (!posWindow) return;
+
+    const items = Array.isArray(previewInvoice.items) ? previewInvoice.items : [];
+    const itemsHtml = items
+      .map(item => {
+        const qty = Number(item.quantity ?? item.qty ?? 0);
+        const unitPrice = Number(item.unitPrice ?? item.price ?? item.sellPrice ?? 0);
+        const lineTotal = Number(item.total ?? item.lineTotal ?? qty * unitPrice);
+        const prodName = item.product?.name || item.name || 'Item';
+
+        return `
+          <tr>
+            <td colspan="3" class="item-name">${prodName}</td>
+          </tr>
+          <tr class="item-meta">
+            <td>${qty} x ${currency}${unitPrice.toLocaleString()}</td>
+            <td></td>
+            <td class="text-right">${currency}${lineTotal.toLocaleString()}</td>
+          </tr>
+        `;
+      })
+      .join('');
+
+    const subTotal = Number(previewInvoice.subTotal ?? previewInvoice.totalAmount ?? 0);
+    const discount = Number(previewInvoice.discount ?? 0);
+    const tax = Number(previewInvoice.tax ?? previewInvoice.vat ?? 0);
+    const grandTotal = Number(
+      previewInvoice.grandTotal ?? previewInvoice.totalAmount ?? subTotal - discount + tax
+    );
+    const paidAmount = Number(previewInvoice.paidAmount ?? 0);
+    const dueAmount = Math.max(0, Number(previewInvoice.dueAmount ?? grandTotal - paidAmount));
+
+    const methodText =
+      previewInvoice.paymentMethod === 'Mobile Banking' && previewInvoice.mobileProvider
+        ? `${previewInvoice.paymentMethod} (${previewInvoice.mobileProvider})`
+        : previewInvoice.paymentMethod || 'Cash';
+
+    const logoHtml =
+      activeSettings.logoUrl && activeSettings.logoUrl.trim()
+        ? `<img src="${activeSettings.logoUrl}" alt="${companyTitle}" class="pos-logo" />`
+        : '';
+
+    const footerNote = activeSettings.invoiceFooter || 'Thank you for your business!';
+
+    posWindow.document.write(`
+      <html>
+        <head>
+          <title>POS Receipt - ${previewInvoice.invoiceNumber}</title>
+          <style>
+            @page { size: 80mm auto; margin: 0; }
+            body {
+              font-family: 'Courier New', Courier, monospace;
+              width: 76mm;
+              max-width: 100%;
+              margin: 0 auto;
+              padding: 6mm 3mm;
+              color: #000;
+              font-size: 11px;
+              line-height: 1.35;
+            }
+            .center { text-align: center; }
+            .right, .text-right { text-align: right; }
+            .bold { font-weight: bold; }
+            .pos-logo {
+              max-width: 44px;
+              max-height: 44px;
+              object-fit: contain;
+              display: block;
+              margin: 0 auto 4px auto;
+            }
+            .shop-name { font-size: 15px; font-weight: bold; margin: 0; }
+            .muted { font-size: 10px; margin: 1px 0; }
+            .divider { border-top: 1px dashed #000; margin: 6px 0; }
+            .row { display: flex; justify-content: space-between; font-size: 10.5px; margin: 2px 0; }
+            table { width: 100%; border-collapse: collapse; margin: 4px 0; }
+            .item-name { font-weight: bold; font-size: 11px; padding-top: 4px; }
+            .item-meta td { font-size: 10px; padding-bottom: 4px; border-bottom: 1px dotted #999; }
+            .total-row { font-size: 12.5px; font-weight: bold; margin-top: 4px; }
+            .footer { text-align: center; font-size: 10px; margin-top: 10px; }
+          </style>
+        </head>
+        <body>
+          <div class="center">
+            ${logoHtml}
+            <p class="shop-name">${companyTitle}</p>
+            ${activeSettings.address ? `<p class="muted">${activeSettings.address}</p>` : ''}
+            ${activeSettings.phone ? `<p class="muted">Tel: ${activeSettings.phone}</p>` : ''}
+            ${activeSettings.taxId ? `<p class="muted">BIN/VAT: ${activeSettings.taxId}</p>` : ''}
+          </div>
+
+          <div class="divider"></div>
+
+          <div class="row">
+            <span><strong>Inv:</strong> ${previewInvoice.invoiceNumber || '-'}</span>
+            <span>${
+              previewInvoice.createdAt
+                ? new Date(previewInvoice.createdAt).toLocaleDateString()
+                : new Date().toLocaleDateString()
+            }</span>
+          </div>
+          <div class="row">
+            <span><strong>Client:</strong> ${previewInvoice.client?.name || 'Walk-in'}</span>
+            <span>${methodText}</span>
+          </div>
+
+          <div class="divider"></div>
+
+          <table>
+            <tbody>
+              ${itemsHtml}
+            </tbody>
+          </table>
+
+          <div class="divider"></div>
+
+          <div class="row">
+            <span>Subtotal:</span>
+            <span>${currency}${subTotal.toLocaleString()}</span>
+          </div>
+          ${
+            discount > 0
+              ? `<div class="row"><span>Discount:</span><span>-${currency}${discount.toLocaleString()}</span></div>`
+              : ''
+          }
+          ${
+            tax > 0
+              ? `<div class="row"><span>Tax/VAT:</span><span>+${currency}${tax.toLocaleString()}</span></div>`
+              : ''
+          }
+          <div class="row total-row">
+            <span>GRAND TOTAL:</span>
+            <span>${currency}${grandTotal.toLocaleString()}</span>
+          </div>
+          <div class="row">
+            <span>Paid:</span>
+            <span>${currency}${paidAmount.toLocaleString()}</span>
+          </div>
+          <div class="row bold">
+            <span>Due:</span>
+            <span>${currency}${dueAmount.toLocaleString()}</span>
+          </div>
+
+          <div class="divider"></div>
+
+          <div class="footer">
+            <p>${footerNote}</p>
+            <p class="muted">Powered by ${companyTitle}</p>
+          </div>
+        </body>
+      </html>
+    `);
+
+    posWindow.document.close();
+    posWindow.focus();
+    setTimeout(() => {
+      posWindow.print();
+      posWindow.close();
+    }, 400);
+  };
+
 
   const currency = activeSettings.currencySymbol || '৳';
   const companyTitle = activeSettings.companyName || 'NEXUS ERP';
@@ -1230,6 +1449,7 @@ export default function Invoices({
                         <FileText className="w-3.5 h-3.5" /> View / Print
                       </button>
 
+
                       {canDeleteInvoice && (
                         <button
                           type="button"
@@ -1434,13 +1654,34 @@ export default function Invoices({
             </div>
 
             <div className="pt-3 flex gap-3 print:hidden border-t">
-              <button
+              {/* <button
                 type="button"
                 onClick={handlePrint}
                 className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white py-2.5 rounded-xl text-sm font-medium flex items-center justify-center gap-2"
               >
                 Print Invoice
-              </button>
+              </button> */}
+
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  onClick={handlePrint}
+                  className="bg-indigo-600 hover:bg-indigo-700 text-white px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold inline-flex items-center gap-1.5 transition"
+                >
+                  <Printer className="w-4 h-4" /> Print Invoice
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handlePosPrint}
+                  className="bg-slate-800 hover:bg-slate-900 text-white px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold inline-flex items-center gap-1.5 transition"
+                >
+                  <Receipt className="w-4 h-4" /> POS Print
+                </button>
+              </div>
+
+
+
               <button
                 type="button"
                 onClick={() => setPreviewInvoice(null)}
