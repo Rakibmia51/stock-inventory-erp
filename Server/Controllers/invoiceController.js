@@ -1,3 +1,4 @@
+
 const Invoice = require('../Models/Invoice');
 const Product = require('../Models/Product');
 const Client = require('../Models/Client');
@@ -6,7 +7,7 @@ const Client = require('../Models/Client');
 const getInvoices = async (req, res) => {
   try {
     const invoices = await Invoice.find()
-      .populate('client', 'name phone address')
+      .populate('client', 'companyName name phone address dueBalance')
       .populate('items.product', 'name sku buyPrice sellPrice')
       .sort({ createdAt: -1 });
     res.json(invoices);
@@ -15,38 +16,55 @@ const getInvoices = async (req, res) => {
   }
 };
 
-// ২. নতুন ইনভয়েস তৈরি, স্টক (Sell OUT), Profit/Loss হিসাব এবং কাস্টমারের Due আপডেট করা
+// ২. নতুন ইনভয়েস তৈরি, স্টক (Sell OUT) এবং কাস্টমারের Due আপডেট করা
 const createInvoice = async (req, res) => {
   try {
-    const { client, items, discount = 0, paidAmount = 0, staffId } = req.body;
+    const {
+      client,
+      items,
+      discount = 0,
+      paidAmount = 0,
+      paymentMethod = 'Cash',
+      mobileProvider = '',
+      notes = ''
+    } = req.body;
 
-    if (!items || !Array.isArray(items) || items.length === 0) {
+    if (!client) {
+      return res.status(400).json({ message: 'Client is required' });
+    }
+
+    if (!Array.isArray(items) || items.length === 0) {
       return res.status(400).json({ message: 'Invoice must contain at least one item' });
+    }
+
+    const clientDoc = await Client.findById(client);
+    if (!clientDoc) {
+      return res.status(404).json({ message: 'Client not found' });
     }
 
     let subTotal = 0;
     let totalCost = 0;
     const preparedItems = [];
 
-    // ধাপ ১: আগে সব প্রোডাক্টের স্টক যাচাই করা ও হিসাব প্রস্তুত করা
-    for (let item of items) {
-      const product = await Product.findById(item.product);
+    for (const item of items) {
+      const productId = item?.product?._id || item?.product;
+      const product = await Product.findById(productId);
       if (!product) {
-        return res.status(404).json({ message: `Product not found` });
+        return res.status(400).json({ message: 'Invalid or missing product in invoice items' });
       }
 
       const qty = Number(item.quantity);
-      if (!qty || qty <= 0) {
+      if (!Number.isFinite(qty) || qty <= 0) {
         return res.status(400).json({ message: `Invalid quantity for ${product.name}` });
       }
 
-      if ((product.quantity || 0) < qty) {
+      if (Number(product.quantity || 0) < qty) {
         return res.status(400).json({
           message: `${product.name}-এর পর্যাপ্ত স্টক নেই! (বর্তমান স্টক: ${product.quantity})`
         });
       }
 
-      const unitPrice = Number(item.unitPrice ?? product.sellPrice ?? 0);
+      const unitPrice = Number(item.unitPrice ?? product.sellPrice ?? product.price ?? 0);
       const unitBuyPrice = Number(product.buyPrice ?? 0);
 
       const lineTotal = qty * unitPrice;
@@ -60,13 +78,14 @@ const createInvoice = async (req, res) => {
         product: product._id,
         quantity: qty,
         unitPrice,
+        buyPrice: unitBuyPrice,
         buyPriceAtSale: unitBuyPrice,
+        total: lineTotal,
         lineTotal,
         profitAmount: lineProfit
       });
     }
 
-    // ধাপ ২: স্টক নিশ্চিত হওয়ার পর প্রতিটি আইটেমের Sell (OUT) বাড়ানো ও Current Stock কমানো
     for (const pItem of preparedItems) {
       await Product.findByIdAndUpdate(pItem.product, {
         $inc: {
@@ -76,8 +95,8 @@ const createInvoice = async (req, res) => {
       });
     }
 
-    const parsedDiscount = Number(discount) || 0;
-    const parsedPaidAmount = Number(paidAmount) || 0;
+    const parsedDiscount = Math.max(0, Number(discount) || 0);
+    const parsedPaidAmount = Math.max(0, Number(paidAmount) || 0);
     const grandTotal = Math.max(0, subTotal - parsedDiscount);
     const dueAmount = Math.max(0, grandTotal - parsedPaidAmount);
     const netProfit = grandTotal - totalCost;
@@ -86,33 +105,60 @@ const createInvoice = async (req, res) => {
     if (grandTotal > 0 && dueAmount >= grandTotal) paymentStatus = 'Due';
     else if (dueAmount > 0) paymentStatus = 'Partial';
 
-    // ইউনিক ইনভয়েস নম্বর তৈরি
-    const count = await Invoice.countDocuments();
-    const invoiceNumber = `INV-${1001 + count}`;
+    const allowedMethods = ['Cash', 'Bank', 'Mobile Banking', 'Adjustment'];
+    const allowedProviders = ['', 'bKash', 'Nagad', 'Rocket', 'Upay'];
+    const safeMethod = allowedMethods.includes(paymentMethod) ? paymentMethod : 'Cash';
+    const safeProvider =
+      safeMethod === 'Mobile Banking' && allowedProviders.includes(mobileProvider)
+        ? mobileProvider
+        : '';
 
-    const newInvoice = new Invoice({
-      invoiceNumber,
-      client,
-      staffId: staffId || undefined,
-      items: preparedItems,
-      subTotal,
-      discount: parsedDiscount,
-      grandTotal,
-      paidAmount: parsedPaidAmount,
-      dueAmount,
-      totalCost,
-      netProfit,
-      paymentStatus
-    });
+    // ইউনিক ইনভয়েস নম্বর তৈরি (ডুপ্লিকেট হলে রিট্রাই)
+    let savedInvoice = null;
+    for (let attempt = 0; attempt < 5; attempt++) {
+      const totalDocs = await Invoice.countDocuments();
+      const invoiceNumber = `INV-${1001 + totalDocs + attempt}`;
 
-    const savedInvoice = await newInvoice.save();
+      try {
+        const newInvoice = new Invoice({
+          invoiceNumber,
+          client: clientDoc._id,
+          items: preparedItems,
+          subTotal,
+          discount: parsedDiscount,
+          grandTotal,
+          paidAmount: parsedPaidAmount,
+          dueAmount,
+          totalCost,
+          netProfit,
+          paymentMethod: safeMethod,
+          mobileProvider: safeProvider,
+          paymentStatus,
+          status: 'Active',
+          notes: typeof notes === 'string' ? notes.trim() : ''
+        });
 
-    // কাস্টমারের বকেয়া (Due Balance) আপডেট করা
-    if (dueAmount > 0 && client) {
-      await Client.findByIdAndUpdate(client, { $inc: { dueBalance: dueAmount } });
+        savedInvoice = await newInvoice.save();
+        break;
+      } catch (saveErr) {
+        if (saveErr?.code === 11000 && attempt < 4) {
+          continue;
+        }
+        throw saveErr;
+      }
     }
 
-    res.status(201).json(savedInvoice);
+    if (dueAmount > 0) {
+      await Client.findByIdAndUpdate(clientDoc._id, {
+        $inc: { dueBalance: dueAmount }
+      });
+    }
+
+    const populatedInvoice = await Invoice.findById(savedInvoice._id)
+      .populate('client', 'companyName name phone address dueBalance')
+      .populate('items.product', 'name sku buyPrice sellPrice');
+
+    res.status(201).json(populatedInvoice);
   } catch (err) {
     res.status(400).json({ message: err.message });
   }
@@ -126,10 +172,10 @@ const deleteInvoice = async (req, res) => {
       return res.status(404).json({ message: 'Invoice not found' });
     }
 
-    // আগে কাটা Sell (OUT) ও Current Stock রিভার্স করা
     for (const item of invoice.items) {
       const qty = Number(item.quantity || 0);
-      const product = await Product.findById(item.product);
+      const productId = item?.product?._id || item?.product;
+      const product = productId ? await Product.findById(productId) : null;
       if (product) {
         const currentSold = Number(product.soldQty || 0);
         const deductSold = Math.min(currentSold, qty);
@@ -139,11 +185,14 @@ const deleteInvoice = async (req, res) => {
       }
     }
 
-    // বকেয়া (Due) থাকলে Client-এর dueBalance থেকে বাদ দেওয়া
-    if (Number(invoice.dueAmount || 0) > 0 && invoice.client) {
-      await Client.findByIdAndUpdate(invoice.client, {
-        $inc: { dueBalance: -Number(invoice.dueAmount) }
-      });
+    const invDue = Number(invoice.dueAmount || 0);
+    const clientId = invoice?.client?._id || invoice?.client;
+    if (invDue > 0 && clientId) {
+      const clientDoc = await Client.findById(clientId);
+      if (clientDoc) {
+        clientDoc.dueBalance = Math.max(0, Number(clientDoc.dueBalance || 0) - invDue);
+        await clientDoc.save();
+      }
     }
 
     await invoice.deleteOne();

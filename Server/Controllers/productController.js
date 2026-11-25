@@ -50,30 +50,6 @@ const createProduct = async (req, res) => {
 };
 
 // ৩. স্টক ইন / আউট আপডেট করা
-// const updateStock = async (req, res) => {
-//   try {
-//     const { type, amount } = req.body; // type: 'IN' অথবা 'OUT'
-//     const product = await Product.findById(req.params.id);
-    
-//     if (!product) return res.status(404).json({ message: 'Product not found' });
-
-//     const qtyChange = Number(amount);
-//     if (type === 'IN') {
-//       product.quantity += qtyChange;
-//     } else if (type === 'OUT') {
-//       if (product.quantity < qtyChange) {
-//         return res.status(400).json({ message: 'পর্যাপ্ত স্টক নেই!' });
-//       }
-//       product.quantity -= qtyChange;
-//     }
-
-//     await product.save();
-//     res.json(product);
-//   } catch (err) {
-//     res.status(500).json({ message: err.message });
-//   }
-// };
-
 const updateStock = async (req, res) => {
   try {
     const { id } = req.params;

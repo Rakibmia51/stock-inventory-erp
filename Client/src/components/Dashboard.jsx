@@ -1,18 +1,24 @@
 
-// import { useState } from 'react';
+
+// import { useState, useMemo } from 'react';
 // import {
 //   Package,
 //   DollarSign,
 //   Users,
 //   AlertTriangle,
 //   TrendingUp,
+//   TrendingDown,
 //   ShoppingBag,
 //   Wallet,
 //   Layers,
 //   Calendar,
 //   CalendarDays,
 //   CalendarRange,
-//   BarChart3
+//   BarChart3,
+//   Banknote,
+//   Landmark,
+//   Smartphone,
+//   ArrowLeftRight
 // } from 'lucide-react';
 
 // const MONTH_NAMES = [
@@ -37,7 +43,6 @@
 //   let yearlySales = 0;
 //   let yearlyCount = 0;
 
-//   // চলতি বছরের ১২ মাসের হিসাব
 //   const monthlySeries = MONTH_NAMES.map((label, idx) => ({
 //     label,
 //     monthIndex: idx,
@@ -45,7 +50,6 @@
 //     count: 0
 //   }));
 
-//   // শেষ ৭ দিনের হিসাব
 //   const last7Days = [];
 //   for (let i = 6; i >= 0; i--) {
 //     const d = new Date(currentYear, currentMonth, currentDate - i);
@@ -56,7 +60,10 @@
 //   const dayMap = new Map(last7Days.map(d => [d.key, d]));
 
 //   for (const inv of list) {
+//     const status = String(inv?.status || '').toLowerCase();
+//     if (status === 'cancelled' || status === 'void') continue;
 //     if (!inv?.createdAt) continue;
+
 //     const invDate = new Date(inv.createdAt);
 //     if (Number.isNaN(invDate.getTime())) continue;
 
@@ -111,7 +118,9 @@
 //   suppliers = [],
 //   clients = [],
 //   invoices = [],
-//   purchases = []
+//   purchases = [],
+//   transactions = [],
+//   accountTransactions = []
 // }) {
 //   const [chartMode, setChartMode] = useState('monthly'); // 'monthly' | 'weekly'
 //   const [hoveredBar, setHoveredBar] = useState(null);
@@ -121,6 +130,11 @@
 //   const clientList = Array.isArray(clients) ? clients : [];
 //   const invoiceList = Array.isArray(invoices) ? invoices : [];
 //   const purchaseList = Array.isArray(purchases) ? purchases : [];
+//   const txList = Array.isArray(transactions)
+//     ? transactions
+//     : Array.isArray(accountTransactions)
+//     ? accountTransactions
+//     : [];
 
 //   const {
 //     todaySales,
@@ -133,7 +147,6 @@
 //     monthlySeries
 //   } = getSalesAnalytics(invoiceList);
 
-//   // Stock Buy Value, Sell Value & Expected Profit
 //   const stockValuation = productList.reduce(
 //     (acc, p) => {
 //       const qty = Math.max(0, Number(p.quantity ?? 0));
@@ -150,20 +163,113 @@
 
 //   const expectedStockProfit = stockValuation.sellValue - stockValuation.buyValue;
 
-//   const totalSalesRevenue = invoiceList.reduce(
-//     (sum, inv) => sum + Number(inv.grandTotal ?? inv.totalAmount ?? 0),
+//   const activeInvoices = invoiceList.filter(inv => {
+//     const st = String(inv?.status || '').toLowerCase();
+//     return st !== 'cancelled' && st !== 'void';
+//   });
+
+//   const totalSalesRevenue = activeInvoices.reduce(
+//     (sum, inv) => sum + Number(inv.grandTotal ?? inv.totalAmount ?? inv.subTotal ?? 0),
 //     0
 //   );
 
-//   const totalPurchaseAmount = purchaseList.reduce(
-//     (sum, pur) => sum + Number(pur.totalAmount ?? 0),
-//     0
-//   );
+//   const totalPurchaseAmount = purchaseList
+//     .filter(pur => String(pur?.status || '').toLowerCase() !== 'cancelled')
+//     .reduce((sum, pur) => sum + Number(pur.totalAmount ?? 0), 0);
 
-//   const totalClientDue = clientList.reduce(
+//   const totalReceivable = clientList.reduce(
 //     (sum, c) => sum + Number(c.dueBalance ?? 0),
 //     0
 //   );
+
+//   const totalPayable = supplierList.reduce(
+//     (sum, s) => sum + Number(s.dueBalance ?? 0),
+//     0
+//   );
+
+//   // Cash, Bank & Mobile Banking Balances
+//   const methodBalances = useMemo(() => {
+//     const map = {
+//       Cash: 0,
+//       Bank: 0,
+//       'Mobile Banking': 0
+//     };
+
+//     const applyFlow = (method, delta) => {
+//       if (method === 'Cash' || method === 'Bank' || method === 'Mobile Banking') {
+//         map[method] += delta;
+//       }
+//     };
+
+//     for (const inv of activeInvoices) {
+//       const paid = Number(inv.paidAmount || 0);
+//       if (paid > 0) {
+//         applyFlow(inv.paymentMethod || 'Cash', paid);
+//       }
+//     }
+
+//     for (const pur of purchaseList) {
+//       if (String(pur?.status || '').toLowerCase() === 'cancelled') continue;
+//       const paid = Number(pur.paidAmount || 0);
+//       if (paid > 0) {
+//         applyFlow(pur.paymentMethod || 'Cash', -paid);
+//       }
+//     }
+
+//     for (const tx of txList) {
+//       const amt = Number(tx.amount || 0);
+//       const method = tx.paymentMethod || 'Cash';
+//       if (tx.entryType === 'INCOME' || tx.entryType === 'DUE_COLLECTION') {
+//         applyFlow(method, amt);
+//       } else if (tx.entryType === 'EXPENSE' || tx.entryType === 'SUPPLIER_PAYMENT') {
+//         applyFlow(method, -amt);
+//       } else if (tx.entryType === 'OTHERS') {
+//         applyFlow(method, amt);
+//       }
+//     }
+
+//     return map;
+//   }, [activeInvoices, purchaseList, txList]);
+
+//   // Net Profit / Loss Calculation (Sales Revenue - COGS + Other Income - Expenses)
+//   const profitSummary = useMemo(() => {
+//     const productById = new Map();
+//     for (const p of productList) {
+//       if (p?._id) productById.set(String(p._id), p);
+//     }
+
+//     let cogs = 0;
+//     for (const inv of activeInvoices) {
+//       const items = Array.isArray(inv?.items) ? inv.items : [];
+//       for (const line of items) {
+//         const qty = Number(line?.quantity ?? line?.qty ?? 0);
+//         const rawProdId =
+//           typeof line?.product === 'string' ? line.product : line?.product?._id || '';
+//         const catalogProd = rawProdId ? productById.get(String(rawProdId)) : null;
+//         const buyUnit = Number(
+//           line?.buyPrice ??
+//             line?.costPrice ??
+//             line?.product?.buyPrice ??
+//             catalogProd?.buyPrice ??
+//             0
+//         );
+//         cogs += qty * buyUnit;
+//       }
+//     }
+
+//     const otherIncome = txList
+//       .filter(tx => tx?.entryType === 'INCOME')
+//       .reduce((sum, tx) => sum + Number(tx?.amount || 0), 0);
+
+//     const operatingExpenses = txList
+//       .filter(tx => tx?.entryType === 'EXPENSE')
+//       .reduce((sum, tx) => sum + Number(tx?.amount || 0), 0);
+
+//     const grossProfit = totalSalesRevenue - cogs;
+//     const netProfit = grossProfit + otherIncome - operatingExpenses;
+
+//     return { cogs, grossProfit, otherIncome, operatingExpenses, netProfit };
+//   }, [activeInvoices, productList, txList, totalSalesRevenue]);
 
 //   const lowStockItems = productList.filter(
 //     p => Number(p.quantity ?? 0) <= Number(p.minStockLevel ?? 5)
@@ -190,6 +296,49 @@
 //       meta: `${yearlyCount} ${yearlyCount === 1 ? 'Invoice' : 'Invoices'} this year`,
 //       icon: CalendarRange,
 //       color: 'bg-violet-50 text-violet-600'
+//     }
+//   ];
+
+//   const accountingCards = [
+//     {
+//       label: 'Cash Balance',
+//       value: `৳ ${methodBalances.Cash.toLocaleString()}`,
+//       meta: 'Available cash in hand',
+//       icon: Banknote,
+//       color: 'bg-emerald-50 text-emerald-600'
+//     },
+//     {
+//       label: 'Bank Balance',
+//       value: `৳ ${methodBalances.Bank.toLocaleString()}`,
+//       meta: 'Net bank flow',
+//       icon: Landmark,
+//       color: 'bg-indigo-50 text-indigo-600'
+//     },
+//     {
+//       label: 'Mobile Banking',
+//       value: `৳ ${methodBalances['Mobile Banking'].toLocaleString()}`,
+//       meta: 'bKash / Nagad / Rocket',
+//       icon: Smartphone,
+//       color: 'bg-violet-50 text-violet-600'
+//     },
+//     {
+//       label: 'Receivable / Payable',
+//       value: `৳${totalReceivable.toLocaleString()} / ৳${totalPayable.toLocaleString()}`,
+//       meta: 'Client Due / Supplier Due',
+//       icon: ArrowLeftRight,
+//       color: 'bg-amber-50 text-amber-600'
+//     },
+//     {
+//       label: profitSummary.netProfit >= 0 ? 'Net Profit' : 'Net Loss',
+//       value: `${profitSummary.netProfit >= 0 ? '' : '-'}৳ ${Math.abs(
+//         profitSummary.netProfit
+//       ).toLocaleString()}`,
+//       meta: `Gross: ৳${profitSummary.grossProfit.toLocaleString()} • Exp: ৳${profitSummary.operatingExpenses.toLocaleString()}`,
+//       icon: profitSummary.netProfit >= 0 ? TrendingUp : TrendingDown,
+//       color:
+//         profitSummary.netProfit >= 0
+//           ? 'bg-teal-50 text-teal-600'
+//           : 'bg-red-50 text-red-600'
 //     }
 //   ];
 
@@ -231,7 +380,7 @@
 //     {
 //       label: 'Total Sales Revenue',
 //       value: `৳ ${totalSalesRevenue.toLocaleString()}`,
-//       meta: `${invoiceList.length} Invoices`,
+//       meta: `${activeInvoices.length} Invoices`,
 //       icon: TrendingUp,
 //       color: 'bg-indigo-50 text-indigo-600'
 //     },
@@ -244,7 +393,7 @@
 //     },
 //     {
 //       label: 'Client Due Balance',
-//       value: `৳ ${totalClientDue.toLocaleString()}`,
+//       value: `৳ ${totalReceivable.toLocaleString()}`,
 //       meta: `${clientList.length} Clients`,
 //       icon: Wallet,
 //       color: 'bg-rose-50 text-rose-600'
@@ -273,7 +422,7 @@
 //       <div>
 //         <h2 className="text-xl sm:text-2xl font-bold text-slate-800">Executive Dashboard</h2>
 //         <p className="text-xs sm:text-sm text-slate-500">
-//           Real-time overview of sales performance, inventory valuation, and low stock alerts.
+//           Real-time overview of sales performance, cash/bank balances, profitability, and stock.
 //         </p>
 //       </div>
 
@@ -302,6 +451,33 @@
 //           );
 //         })}
 //       </div>
+
+//       {/* Cash, Bank, Mobile Banking, Receivable/Payable & Net Profit/Loss */}
+//       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-4">
+//         {accountingCards.map((card, idx) => {
+//           const Icon = card.icon;
+//           return (
+//             <div
+//               key={idx}
+//               className="bg-white p-4 rounded-2xl shadow-sm border border-slate-200/80 flex items-start justify-between gap-3"
+//             >
+//               <div className="min-w-0">
+//                 <p className="text-xs font-semibold text-slate-500 uppercase truncate">
+//                   {card.label}
+//                 </p>
+//                 <p className="text-base sm:text-lg font-extrabold text-slate-900 mt-1 truncate">
+//                   {card.value}
+//                 </p>
+//                 <p className="text-[11px] text-slate-400 mt-0.5 truncate">{card.meta}</p>
+//               </div>
+//               <div className={`p-2.5 rounded-xl shrink-0 ${card.color}`}>
+//                 <Icon className="w-5 h-5" />
+//               </div>
+//             </div>
+//           );
+//         })}
+//       </div>
+
 //       {/* Primary Inventory KPI Cards */}
 //       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 sm:gap-5">
 //         {primaryStats.map((stat, i) => {
@@ -479,9 +655,8 @@
 //                     onMouseLeave={() => setHoveredBar(null)}
 //                     className="flex-1 h-full flex flex-col items-center justify-end group relative cursor-pointer"
 //                   >
-//                     {/* Hover Tooltip */}
 //                     {isHovered && (
-//                       <div className=" -top-12 absolute z-10 bg-slate-900 text-white text-[11px] px-2.5 py-1.5 rounded-lg shadow-lg whitespace-nowrap pointer-events-none">
+//                       <div className="-top-12 absolute z-10 bg-slate-900 text-white text-[11px] px-2.5 py-1.5 rounded-lg shadow-lg whitespace-nowrap pointer-events-none">
 //                         <div className="font-bold">৳ {Number(item.amount || 0).toLocaleString()}</div>
 //                         <div className="text-slate-300 text-[10px]">
 //                           {item.count} {item.count === 1 ? 'sale' : 'sales'}
@@ -489,12 +664,10 @@
 //                       </div>
 //                     )}
 
-//                     {/* Value Label Above Bar */}
 //                     <span className="text-[10px] font-semibold text-slate-500 mb-1 truncate max-w-full">
 //                       {item.amount > 0 ? `৳${Number(item.amount).toLocaleString()}` : '৳0'}
 //                     </span>
 
-//                     {/* Bar */}
 //                     <div
 //                       style={{ height: `${heightPercent}%` }}
 //                       className={`w-full max-w-[38px] rounded-t-lg transition-all duration-300 ${
@@ -510,7 +683,6 @@
 //               })}
 //             </div>
 
-//             {/* X-Axis Labels */}
 //             <div className="flex items-center justify-between gap-2 sm:gap-3 px-2 pt-2.5">
 //               {activeSeries.map(item => (
 //                 <div
@@ -524,10 +696,10 @@
 //           </div>
 //         </div>
 //       </div>
-
 //     </div>
 //   );
 // }
+
 
 import { useState, useMemo } from 'react';
 import {
@@ -716,7 +888,7 @@ export default function Dashboard({
     0
   );
 
-  // Cash, Bank & Mobile Banking Balances
+  // Cash, Bank & Mobile Banking Balance হিসাব (Accounts.jsx-এর সাথে হুবহু মিল রেখে)
   const methodBalances = useMemo(() => {
     const map = {
       Cash: 0,
@@ -730,13 +902,17 @@ export default function Dashboard({
       }
     };
 
-    for (const inv of activeInvoices) {
+    // Invoices Paid Amount (+)
+    for (const inv of invoiceList) {
+      const st = String(inv?.status || '').toLowerCase();
+      if (st === 'cancelled' || st === 'void') continue;
       const paid = Number(inv.paidAmount || 0);
       if (paid > 0) {
         applyFlow(inv.paymentMethod || 'Cash', paid);
       }
     }
 
+    // Purchases Paid Amount (-)
     for (const pur of purchaseList) {
       if (String(pur?.status || '').toLowerCase() === 'cancelled') continue;
       const paid = Number(pur.paidAmount || 0);
@@ -745,6 +921,7 @@ export default function Dashboard({
       }
     }
 
+    // Account Transactions
     for (const tx of txList) {
       const amt = Number(tx.amount || 0);
       const method = tx.paymentMethod || 'Cash';
@@ -758,7 +935,7 @@ export default function Dashboard({
     }
 
     return map;
-  }, [activeInvoices, purchaseList, txList]);
+  }, [invoiceList, purchaseList, txList]);
 
   // Net Profit / Loss Calculation (Sales Revenue - COGS + Other Income - Expenses)
   const profitSummary = useMemo(() => {
