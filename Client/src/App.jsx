@@ -463,6 +463,7 @@ export default function App() {
               clients={clients}
               invoices={invoices}
               purchases={purchases}
+              transactions={accountTransactions}
               accountTransactions={accountTransactions}
               settings={erpSettings}
               reloadData={loadData}
@@ -473,6 +474,8 @@ export default function App() {
           {activeTab === 'products' && (
             <Products
               products={products}
+              suppliers={suppliers}
+              clients={clients}
               settings={erpSettings}
               reloadData={loadData}
               user={user}

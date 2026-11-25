@@ -13,6 +13,7 @@ import {
   UserPlus
 } from 'lucide-react';
 import { addClient, updateClient, deleteClient } from '../services/api';
+import { DEFAULT_ERP_SETTINGS } from './Settings';
 
 const getEffectiveUser = (propUser) => {
   if (propUser) return propUser;
@@ -32,7 +33,11 @@ const emptyForm = {
   dueBalance: 0
 };
 
-export default function Clients({ clients = [], reloadData, user }) {
+export default function Clients({ 
+      clients = [],
+      settings, 
+      reloadData, 
+  user }) {
   const [form, setForm] = useState(emptyForm);
   const [searchTerm, setSearchTerm] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -184,8 +189,16 @@ export default function Clients({ clients = [], reloadData, user }) {
   };
 
   // ক্লায়েন্ট লিস্ট প্রিন্ট করা
-  const handlePrintList = () => {
+const handlePrintList = () => {
+    const activeSettings = {
+      ...DEFAULT_ERP_SETTINGS,
+      ...(settings || {})
+    };
+    const currency = activeSettings.currencySymbol || '৳';
+    const companyTitle = (activeSettings.companyName || 'NEXUS ERP').trim();
+
     const printWindow = window.open('', '_blank', 'height=750,width=950');
+    if (!printWindow) return;
 
     const rowsHtml = filteredClients
       .map(
@@ -196,19 +209,47 @@ export default function Clients({ clients = [], reloadData, user }) {
           <td>${c.phone || '-'}</td>
           <td>${c.email || 'N/A'}</td>
           <td>${c.address || 'N/A'}</td>
-          <td class="text-right">৳${Number(c.dueBalance || 0).toLocaleString()}</td>
+          <td class="text-right">${currency}${Number(c.dueBalance || 0).toLocaleString()}</td>
         </tr>
       `
       )
       .join('');
 
+    const metaParts = [
+      activeSettings.address,
+      activeSettings.phone && `Phone: ${activeSettings.phone}`,
+      activeSettings.email && `Email: ${activeSettings.email}`,
+      activeSettings.taxId && `BIN/VAT: ${activeSettings.taxId}`
+    ].filter(Boolean);
+
+    const logoHtml =
+      activeSettings.logoUrl && activeSettings.logoUrl.trim()
+        ? `<img src="${activeSettings.logoUrl}" alt="${companyTitle}" style="width:44px;height:44px;object-fit:contain;border:1px solid #e2e8f0;border-radius:8px;padding:3px;" />`
+        : '';
+
+    const signaturesHtml =
+      activeSettings.showSignatureOnPrint !== false
+        ? `
+          <div class="signatures">
+            <div class="sig-box">Prepared By</div>
+            <div class="sig-box">Accounts / Checked By</div>
+            <div class="sig-box">Authorized Signature (${companyTitle})</div>
+          </div>
+        `
+        : '';
+
+    const footerHtml = activeSettings.invoiceFooter
+      ? `<div class="footer-note">${activeSettings.invoiceFooter}</div>`
+      : '';
+
     printWindow.document.write(`
       <html>
         <head>
-          <title>Client Directory Report</title>
+          <title>Client Directory Report - ${companyTitle}</title>
           <style>
             body { font-family: Arial, sans-serif; padding: 24px; color: #0f172a; }
-            .header { display: flex; justify-content: space-between; border-bottom: 2px solid #e2e8f0; padding-bottom: 12px; margin-bottom: 16px; }
+            .header { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid #e2e8f0; padding-bottom: 12px; margin-bottom: 16px; gap: 12px; }
+            .brand-row { display: flex; align-items: flex-start; gap: 10px; }
             h2 { margin: 0 0 4px 0; font-size: 20px; }
             p { margin: 2px 0; font-size: 12px; color: #475569; }
             table { width: 100%; border-collapse: collapse; font-size: 12px; }
@@ -217,16 +258,21 @@ export default function Clients({ clients = [], reloadData, user }) {
             tfoot td { background: #f8fafc; font-weight: bold; border-top: 2px solid #94a3b8; }
             .text-right { text-align: right; }
             .signatures { display: flex; justify-content: space-between; margin-top: 55px; }
-            .sig-box { width: 180px; border-top: 1px solid #64748b; text-align: center; padding-top: 5px; font-size: 11px; color: #475569; }
+            .sig-box { width: 190px; border-top: 1px solid #64748b; text-align: center; padding-top: 5px; font-size: 11px; color: #475569; }
+            .footer-note { margin-top: 24px; padding-top: 10px; border-top: 1px dashed #cbd5e1; text-align: center; font-size: 11px; color: #64748b; }
           </style>
         </head>
         <body>
           <div class="header">
-            <div>
-              <h2>CLIENT DIRECTORY</h2>
-              <p>Total Clients: ${filteredClients.length}${
-                searchTerm.trim() ? ` • Filter: "${searchTerm.trim()}"` : ''
-              }</p>
+            <div class="brand-row">
+              ${logoHtml}
+              <div>
+                <h2>${companyTitle} — CLIENT DIRECTORY</h2>
+                ${metaParts.length ? `<p>${metaParts.join(' • ')}</p>` : ''}
+                <p>Total Clients: ${filteredClients.length}${
+                  searchTerm.trim() ? ` • Filter: "${searchTerm.trim()}"` : ''
+                }</p>
+              </div>
             </div>
             <div style="text-align:right">
               <p><strong>Date:</strong> ${new Date().toLocaleDateString()}</p>
@@ -253,16 +299,13 @@ export default function Clients({ clients = [], reloadData, user }) {
             <tfoot>
               <tr>
                 <td colspan="5">Total Due Balance</td>
-                <td class="text-right">৳${totalDue.toLocaleString()}</td>
+                <td class="text-right">${currency}${totalDue.toLocaleString()}</td>
               </tr>
             </tfoot>
           </table>
 
-          <div class="signatures">
-            <div class="sig-box">Prepared By</div>
-            <div class="sig-box">Accounts / Checked By</div>
-            <div class="sig-box">Authorized Signature</div>
-          </div>
+          ${signaturesHtml}
+          ${footerHtml}
         </body>
       </html>
     `);
@@ -274,6 +317,7 @@ export default function Clients({ clients = [], reloadData, user }) {
       printWindow.close();
     }, 400);
   };
+
 
   return (
     <div className="space-y-5 sm:space-y-6">

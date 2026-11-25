@@ -12,6 +12,7 @@ import {
   Building2
 } from 'lucide-react';
 import { addSupplier, updateSupplier, deleteSupplier } from '../services/api';
+import { DEFAULT_ERP_SETTINGS } from './Settings';
 
 const getEffectiveUser = (propUser) => {
   if (propUser) return propUser;
@@ -35,7 +36,7 @@ const emptyForm = {
   dueBalance: ''
 };
 
-export default function Suppliers({ suppliers = [], reloadData, user }) {
+export default function Suppliers({ suppliers = [], reloadData, settings, user }) {
   const [form, setForm] = useState(emptyForm);
   const [searchTerm, setSearchTerm] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -197,9 +198,22 @@ export default function Suppliers({ suppliers = [], reloadData, user }) {
     URL.revokeObjectURL(url);
   };
 
-  // সাপ্লায়ার লিস্ট প্রিন্ট করা
+// সাপ্লায়ার লিস্ট প্রিন্ট করা
   const handlePrintList = () => {
+    const activeSettings = {
+      ...DEFAULT_ERP_SETTINGS,
+      ...(settings || {})
+    };
+    const currency = activeSettings.currencySymbol || '৳';
+    const companyTitle = (activeSettings.companyName || 'NEXUS ERP').trim();
+
     const printWindow = window.open('', '_blank', 'height=750,width=950');
+    if (!printWindow) return;
+
+    const totalDue = filteredSuppliers.reduce(
+      (sum, s) => sum + Number(s.dueBalance || 0),
+      0
+    );
 
     const rowsHtml = filteredSuppliers
       .map(
@@ -211,35 +225,69 @@ export default function Suppliers({ suppliers = [], reloadData, user }) {
           <td>${s.phone || '-'}</td>
           <td>${s.email || 'N/A'}</td>
           <td>${s.address || 'N/A'}</td>
-          <td style="text-align:right">৳${Number(s.dueBalance || 0).toLocaleString()}</td>
+          <td style="text-align:right">${currency}${Number(s.dueBalance || 0).toLocaleString()}</td>
         </tr>
       `
       )
       .join('');
 
+    const metaParts = [
+      activeSettings.address,
+      activeSettings.phone && `Phone: ${activeSettings.phone}`,
+      activeSettings.email && `Email: ${activeSettings.email}`,
+      activeSettings.taxId && `BIN/VAT: ${activeSettings.taxId}`
+    ].filter(Boolean);
+
+    const logoHtml =
+      activeSettings.logoUrl && activeSettings.logoUrl.trim()
+        ? `<img src="${activeSettings.logoUrl}" alt="${companyTitle}" style="width:44px;height:44px;object-fit:contain;border:1px solid #e2e8f0;border-radius:8px;padding:3px;" />`
+        : '';
+
+    const signaturesHtml =
+      activeSettings.showSignatureOnPrint !== false
+        ? `
+          <div class="signatures">
+            <div class="sig-box">Prepared By</div>
+            <div class="sig-box">Purchase / Checked By</div>
+            <div class="sig-box">Authorized Signature (${companyTitle})</div>
+          </div>
+        `
+        : '';
+
+    const footerHtml = activeSettings.invoiceFooter
+      ? `<div class="footer-note">${activeSettings.invoiceFooter}</div>`
+      : '';
+
     printWindow.document.write(`
       <html>
         <head>
-          <title>Supplier Directory Report</title>
+          <title>Supplier Directory Report - ${companyTitle}</title>
           <style>
             body { font-family: Arial, sans-serif; padding: 24px; color: #0f172a; }
-            .header { display: flex; justify-content: space-between; border-bottom: 2px solid #e2e8f0; padding-bottom: 12px; margin-bottom: 16px; }
+            .header { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid #e2e8f0; padding-bottom: 12px; margin-bottom: 16px; gap: 12px; }
+            .brand-row { display: flex; align-items: flex-start; gap: 10px; }
             h2 { margin: 0 0 4px 0; font-size: 20px; }
             p { margin: 2px 0; font-size: 12px; color: #475569; }
             table { width: 100%; border-collapse: collapse; font-size: 12px; }
             th, td { border-bottom: 1px solid #cbd5e1; padding: 8px 6px; text-align: left; }
             th { background: #f1f5f9; font-weight: bold; }
+            tfoot td { background: #f8fafc; font-weight: bold; border-top: 2px solid #94a3b8; }
             .signatures { display: flex; justify-content: space-between; margin-top: 55px; }
-            .sig-box { width: 180px; border-top: 1px solid #64748b; text-align: center; padding-top: 5px; font-size: 11px; color: #475569; }
+            .sig-box { width: 190px; border-top: 1px solid #64748b; text-align: center; padding-top: 5px; font-size: 11px; color: #475569; }
+            .footer-note { margin-top: 24px; padding-top: 10px; border-top: 1px dashed #cbd5e1; text-align: center; font-size: 11px; color: #64748b; }
           </style>
         </head>
         <body>
           <div class="header">
-            <div>
-              <h2>SUPPLIER DIRECTORY & PAYABLE REPORT</h2>
-              <p>Total Suppliers: ${filteredSuppliers.length}${
-                searchTerm.trim() ? ` • Filter: "${searchTerm.trim()}"` : ''
-              }</p>
+            <div class="brand-row">
+              ${logoHtml}
+              <div>
+                <h2>${companyTitle} — SUPPLIER DIRECTORY & PAYABLE REPORT</h2>
+                ${metaParts.length ? `<p>${metaParts.join(' • ')}</p>` : ''}
+                <p>Total Suppliers: ${filteredSuppliers.length}${
+                  searchTerm.trim() ? ` • Filter: "${searchTerm.trim()}"` : ''
+                }</p>
+              </div>
             </div>
             <div style="text-align:right">
               <p><strong>Date:</strong> ${new Date().toLocaleDateString()}</p>
@@ -264,13 +312,16 @@ export default function Suppliers({ suppliers = [], reloadData, user }) {
                 `<tr><td colspan="7" style="text-align:center;padding:16px;">No suppliers found.</td></tr>`
               }
             </tbody>
+            <tfoot>
+              <tr>
+                <td colspan="6">Total Due Balance</td>
+                <td style="text-align:right">${currency}${totalDue.toLocaleString()}</td>
+              </tr>
+            </tfoot>
           </table>
 
-          <div class="signatures">
-            <div class="sig-box">Prepared By</div>
-            <div class="sig-box">Purchase / Checked By</div>
-            <div class="sig-box">Authorized Signature</div>
-          </div>
+          ${signaturesHtml}
+          ${footerHtml}
         </body>
       </html>
     `);

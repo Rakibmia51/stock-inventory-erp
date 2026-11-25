@@ -21,6 +21,7 @@ import {
   createReturn,
   getReturns
 } from '../services/api';
+import { DEFAULT_ERP_SETTINGS } from './Settings';
 
 const getEffectiveUser = (propUser) => {
   if (propUser) return propUser;
@@ -32,7 +33,7 @@ const getEffectiveUser = (propUser) => {
   }
 };
 
-export default function Products({ products = [], reloadData, user }) {
+export default function Products({ products = [], suppliers, reloadData, settings, user }) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('ALL');
@@ -66,6 +67,9 @@ export default function Products({ products = [], reloadData, user }) {
   const [historyModalOpen, setHistoryModalOpen] = useState(false);
   const [returnHistory, setReturnHistory] = useState([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
+
+  const [historyFromDate, setHistoryFromDate] = useState('');
+  const [historyToDate, setHistoryToDate] = useState('');
 
   const currentUser = getEffectiveUser(user);
   const isAdmin =
@@ -313,8 +317,17 @@ export default function Products({ products = [], reloadData, user }) {
   };
 
   // ৬. Print Filtered / All Products with Total Stock Summary
-  const handlePrintProducts = () => {
+const handlePrintProducts = () => {
+    const activeSettings = {
+      ...DEFAULT_ERP_SETTINGS,
+      ...(settings || {})
+    };
+    const currency = activeSettings.currencySymbol || '৳';
+    const companyTitle = (activeSettings.companyName || 'NEXUS ERP').trim();
+
     const printWindow = window.open('', '_blank', 'height=750,width=1050');
+    if (!printWindow) return;
+
     const filterSummary = [
       categoryFilter !== 'ALL' ? `Category: ${categoryFilter}` : 'All Categories',
       statusFilter === 'LOW'
@@ -337,28 +350,56 @@ export default function Products({ products = [], reloadData, user }) {
             <td>${idx + 1}</td>
             <td><strong>${p.name}</strong><br/><small>${p.sku || ''}</small></td>
             <td>${p.category || '-'}</td>
-            <td class="text-right">৳${buyVal.toLocaleString()}</td>
-            <td class="text-right">৳${sellVal.toLocaleString()}</td>
+            <td class="text-right">${currency}${buyVal.toLocaleString()}</td>
+            <td class="text-right">${currency}${sellVal.toLocaleString()}</td>
             <td class="text-right">${opening}</td>
             <td class="text-right">+${purchased}</td>
             <td class="text-right">-${sold}</td>
             <td class="text-right">${returned >= 0 ? `+${returned}` : returned}</td>
             <td class="text-right"><strong>${current}</strong></td>
-            <td class="text-right">৳${(current * buyVal).toLocaleString()}</td>
-            <td class="text-right">৳${(current * sellVal).toLocaleString()}</td>
+            <td class="text-right">${currency}${(current * buyVal).toLocaleString()}</td>
+            <td class="text-right">${currency}${(current * sellVal).toLocaleString()}</td>
             <td>${isLow ? 'Low Stock' : 'In Stock'}</td>
           </tr>
         `;
       })
       .join('');
 
+    const metaParts = [
+      activeSettings.address,
+      activeSettings.phone && `Phone: ${activeSettings.phone}`,
+      activeSettings.email && `Email: ${activeSettings.email}`,
+      activeSettings.taxId && `BIN/VAT: ${activeSettings.taxId}`
+    ].filter(Boolean);
+
+    const logoHtml =
+      activeSettings.logoUrl && activeSettings.logoUrl.trim()
+        ? `<img src="${activeSettings.logoUrl}" alt="${companyTitle}" style="width:44px;height:44px;object-fit:contain;border:1px solid #e2e8f0;border-radius:8px;padding:3px;" />`
+        : '';
+
+    const signaturesHtml =
+      activeSettings.showSignatureOnPrint !== false
+        ? `
+          <div class="signatures">
+            <div class="sig-box">Prepared By</div>
+            <div class="sig-box">Checked By</div>
+            <div class="sig-box">Authorized Signature (${companyTitle})</div>
+          </div>
+        `
+        : '';
+
+    const footerHtml = activeSettings.invoiceFooter
+      ? `<div class="footer-note">${activeSettings.invoiceFooter}</div>`
+      : '';
+
     printWindow.document.write(`
       <html>
         <head>
-          <title>Inventory Stock Ledger Report</title>
+          <title>Inventory Stock Ledger Report - ${companyTitle}</title>
           <style>
             body { font-family: Arial, sans-serif; padding: 24px; color: #0f172a; }
-            .header { display: flex; justify-content: space-between; border-bottom: 2px solid #e2e8f0; padding-bottom: 12px; margin-bottom: 14px; }
+            .header { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid #e2e8f0; padding-bottom: 12px; margin-bottom: 14px; gap: 12px; }
+            .brand-row { display: flex; align-items: flex-start; gap: 10px; }
             h2 { margin: 0 0 4px 0; font-size: 20px; }
             p { margin: 2px 0; font-size: 12px; color: #475569; }
             .summary-grid { display: flex; justify-content: space-between; gap: 10px; margin-bottom: 16px; }
@@ -370,14 +411,19 @@ export default function Products({ products = [], reloadData, user }) {
             tfoot td { background: #f8fafc; font-weight: bold; border-top: 2px solid #94a3b8; }
             .text-right { text-align: right; }
             .signatures { display: flex; justify-content: space-between; margin-top: 50px; }
-            .sig-box { width: 180px; border-top: 1px solid #64748b; text-align: center; padding-top: 5px; font-size: 11px; color: #475569; }
+            .sig-box { width: 190px; border-top: 1px solid #64748b; text-align: center; padding-top: 5px; font-size: 11px; color: #475569; }
+            .footer-note { margin-top: 24px; padding-top: 10px; border-top: 1px dashed #cbd5e1; text-align: center; font-size: 11px; color: #64748b; }
           </style>
         </head>
         <body>
           <div class="header">
-            <div>
-              <h2>INVENTORY STOCK LEDGER</h2>
-              <p>${filterSummary} • Total Products: ${filteredProducts.length}</p>
+            <div class="brand-row">
+              ${logoHtml}
+              <div>
+                <h2>${companyTitle} — INVENTORY STOCK LEDGER</h2>
+                ${metaParts.length ? `<p>${metaParts.join(' • ')}</p>` : ''}
+                <p>${filterSummary} • Total Products: ${filteredProducts.length}</p>
+              </div>
             </div>
             <div style="text-align:right">
               <p><strong>Date:</strong> ${new Date().toLocaleDateString()}</p>
@@ -386,9 +432,9 @@ export default function Products({ products = [], reloadData, user }) {
 
           <div class="summary-grid">
             <div class="summary-box">Total Stock Qty<strong>${stockSummary.totalUnits.toLocaleString()} pcs</strong></div>
-            <div class="summary-box">Total Buy Value<strong>৳${stockSummary.totalBuyValue.toLocaleString()}</strong></div>
-            <div class="summary-box">Total Sell Value<strong>৳${stockSummary.totalSellValue.toLocaleString()}</strong></div>
-            <div class="summary-box">Expected Profit<strong>${expectedProfit >= 0 ? '+' : ''}৳${expectedProfit.toLocaleString()}</strong></div>
+            <div class="summary-box">Total Buy Value<strong>${currency}${stockSummary.totalBuyValue.toLocaleString()}</strong></div>
+            <div class="summary-box">Total Sell Value<strong>${currency}${stockSummary.totalSellValue.toLocaleString()}</strong></div>
+            <div class="summary-box">Expected Profit<strong>${expectedProfit >= 0 ? '+' : ''}${currency}${expectedProfit.toLocaleString()}</strong></div>
           </div>
 
           <table>
@@ -423,18 +469,196 @@ export default function Products({ products = [], reloadData, user }) {
                 <td class="text-right">-${stockSummary.totalSold}</td>
                 <td class="text-right">${stockSummary.totalReturned}</td>
                 <td class="text-right">${stockSummary.totalUnits}</td>
-                <td class="text-right">৳${stockSummary.totalBuyValue.toLocaleString()}</td>
-                <td class="text-right">৳${stockSummary.totalSellValue.toLocaleString()}</td>
+                <td class="text-right">${currency}${stockSummary.totalBuyValue.toLocaleString()}</td>
+                <td class="text-right">${currency}${stockSummary.totalSellValue.toLocaleString()}</td>
                 <td></td>
               </tr>
             </tfoot>
           </table>
 
+          ${signaturesHtml}
+          ${footerHtml}
+        </body>
+      </html>
+    `);
+
+    printWindow.document.close();
+    printWindow.focus();
+    setTimeout(() => {
+      printWindow.print();
+      printWindow.close();
+    }, 400);
+  };
+
+const activeSettings = {
+  ...DEFAULT_ERP_SETTINGS,
+  ...(settings || {})
+};
+const companyTitle = (activeSettings.companyName || 'NEXUS ERP').trim();
+
+const parseDateBound = (dateStr, endOfDay = false) => {
+  if (!dateStr) return null;
+  const [y, m, d] = dateStr.split('-').map(Number);
+  if (!y || !m || !d) return null;
+  return endOfDay
+    ? new Date(y, m - 1, d, 23, 59, 59, 999)
+    : new Date(y, m - 1, d, 0, 0, 0, 0);
+};
+
+const filteredReturnHistory = (Array.isArray(returnHistory) ? returnHistory : []).filter(item => {
+  const fromBound = parseDateBound(historyFromDate, false);
+  const toBound = parseDateBound(historyToDate, true);
+  if (!fromBound && !toBound) return true;
+
+  const rawDate = item?.createdAt || item?.returnDate || item?.date;
+  if (!rawDate) return false;
+  const dt = new Date(rawDate);
+  if (Number.isNaN(dt.getTime())) return false;
+
+  if (fromBound && dt < fromBound) return false;
+  if (toBound && dt > toBound) return false;
+  return true;
+});
+
+const salesReturnQty = filteredReturnHistory
+  .filter(r => r.returnType === 'SALES_RETURN')
+  .reduce((sum, r) => sum + Number(r.quantity || 0), 0);
+
+const purchaseReturnQty = filteredReturnHistory
+  .filter(r => r.returnType !== 'SALES_RETURN')
+  .reduce((sum, r) => sum + Number(r.quantity || 0), 0);
+
+const returnPeriodText =
+  historyFromDate && historyToDate
+    ? `${historyFromDate} to ${historyToDate}`
+    : historyFromDate
+    ? `From ${historyFromDate}`
+    : historyToDate
+    ? `Up to ${historyToDate}`
+    : 'All Dates';
+
+  const handlePrintReturnHistory = () => {
+    const printWindow = window.open('', '_blank', 'height=750,width=980');
+    if (!printWindow) return;
+
+    const rowsHtml = filteredReturnHistory
+      .map((item, idx) => {
+        const isSalesRet = item.returnType === 'SALES_RETURN';
+        const typeLabel = isSalesRet ? 'Sales Return (+)' : 'Purchase Return (-)';
+        const dateFormatted = item.createdAt
+          ? new Date(item.createdAt).toLocaleDateString()
+          : '-';
+
+        return `
+          <tr>
+            <td>${idx + 1}</td>
+            <td class="mono"><strong>${item.returnNumber || '-'}</strong></td>
+            <td>
+              <strong>${item.product?.name || 'Deleted Product'}</strong>
+              ${item.product?.sku ? `<br/><small>${item.product.sku}</small>` : ''}
+            </td>
+            <td>${typeLabel}</td>
+            <td class="text-right"><strong>${Number(item.quantity || 0).toLocaleString()}</strong></td>
+            <td>${item.reason || '-'}</td>
+            <td>${dateFormatted}</td>
+          </tr>
+        `;
+      })
+      .join('');
+
+    const metaParts = [
+      activeSettings.address,
+      activeSettings.phone && `Phone: ${activeSettings.phone}`,
+      activeSettings.email && `Email: ${activeSettings.email}`,
+      activeSettings.taxId && `BIN/VAT: ${activeSettings.taxId}`
+    ].filter(Boolean);
+
+    const logoHtml =
+      activeSettings.logoUrl && activeSettings.logoUrl.trim()
+        ? `<img src="${activeSettings.logoUrl}" alt="${companyTitle}" style="width:44px;height:44px;object-fit:contain;border:1px solid #e2e8f0;border-radius:8px;padding:3px;" />`
+        : '';
+
+    const signaturesHtml =
+      activeSettings.showSignatureOnPrint !== false
+        ? `
           <div class="signatures">
             <div class="sig-box">Prepared By</div>
-            <div class="sig-box">Checked By</div>
-            <div class="sig-box">Authorized Signature</div>
+            <div class="sig-box">Store / Checked By</div>
+            <div class="sig-box">Authorized Signature (${companyTitle})</div>
           </div>
+        `
+        : '';
+
+    const footerHtml = activeSettings.invoiceFooter
+      ? `<div class="footer-note">${activeSettings.invoiceFooter}</div>`
+      : '';
+
+    printWindow.document.write(`
+      <html>
+        <head>
+          <title>Stock Return History - ${companyTitle}</title>
+          <style>
+            body { font-family: Arial, sans-serif; padding: 24px; color: #0f172a; }
+            .header { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid #e2e8f0; padding-bottom: 12px; margin-bottom: 14px; gap: 12px; }
+            .brand-row { display: flex; align-items: flex-start; gap: 10px; }
+            h2 { margin: 0 0 4px 0; font-size: 19px; }
+            p { margin: 2px 0; font-size: 12px; color: #475569; }
+            .summary-bar { display: flex; justify-content: space-between; gap: 10px; margin-bottom: 14px; }
+            .summary-card { flex: 1; border: 1px solid #cbd5e1; border-radius: 6px; padding: 8px 10px; background: #f8fafc; font-size: 11.5px; }
+            .summary-card strong { display: block; font-size: 13px; margin-top: 2px; color: #0f172a; }
+            table { width: 100%; border-collapse: collapse; font-size: 12px; }
+            th, td { border-bottom: 1px solid #cbd5e1; padding: 7px 6px; text-align: left; }
+            th { background: #f1f5f9; font-weight: bold; }
+            .mono { font-family: monospace; }
+            .text-right { text-align: right; }
+            .signatures { display: flex; justify-content: space-between; margin-top: 50px; }
+            .sig-box { width: 190px; border-top: 1px solid #64748b; text-align: center; padding-top: 5px; font-size: 11px; color: #475569; }
+            .footer-note { margin-top: 24px; padding-top: 10px; border-top: 1px dashed #cbd5e1; text-align: center; font-size: 11px; color: #64748b; }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <div class="brand-row">
+              ${logoHtml}
+              <div>
+                <h2>${companyTitle} — STOCK RETURN HISTORY</h2>
+                ${metaParts.length ? `<p>${metaParts.join(' • ')}</p>` : ''}
+                <p><strong>Date Range:</strong> ${returnPeriodText} • <strong>Records:</strong> ${filteredReturnHistory.length}</p>
+              </div>
+            </div>
+            <div style="text-align:right">
+              <p><strong>Printed:</strong> ${new Date().toLocaleDateString()}</p>
+            </div>
+          </div>
+
+          <div class="summary-bar">
+            <div class="summary-card">Total Returns<strong>${filteredReturnHistory.length} entries</strong></div>
+            <div class="summary-card">Sales Return Qty (+)<strong>${salesReturnQty.toLocaleString()} pcs</strong></div>
+            <div class="summary-card">Purchase Return Qty (-)<strong>${purchaseReturnQty.toLocaleString()} pcs</strong></div>
+          </div>
+
+          <table>
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Return #</th>
+                <th>Product</th>
+                <th>Type</th>
+                <th class="text-right">Qty</th>
+                <th>Reason</th>
+                <th>Date</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${
+                rowsHtml ||
+                `<tr><td colspan="7" style="text-align:center;padding:16px;">No return records found for selected dates.</td></tr>`
+              }
+            </tbody>
+          </table>
+
+          ${signaturesHtml}
+          ${footerHtml}
         </body>
       </html>
     `);
@@ -1074,7 +1298,7 @@ export default function Products({ products = [], reloadData, user }) {
       )}
 
       {/* Return History Modal */}
-      {historyModalOpen && (
+      {/* {historyModalOpen && (
         <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl shadow-xl max-w-3xl w-full p-6 max-h-[85vh] flex flex-col">
             <div className="flex justify-between items-center border-b border-slate-100 pb-4 mb-4">
@@ -1136,7 +1360,134 @@ export default function Products({ products = [], reloadData, user }) {
             </div>
           </div>
         </div>
-      )}
+      )} */}
+      {/* Return History Modal */}
+{historyModalOpen && (
+  <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+    <div className="bg-white rounded-2xl shadow-xl max-w-4xl w-full p-6 max-h-[88vh] flex flex-col">
+      <div className="flex flex-wrap justify-between items-center border-b border-slate-100 pb-4 mb-4 gap-2">
+        <div>
+          <h3 className="text-lg font-bold text-slate-800">Stock Return History</h3>
+          <p className="text-xs text-slate-500">All recorded sales and purchase returns</p>
+        </div>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={handlePrintReturnHistory}
+            disabled={loadingHistory || filteredReturnHistory.length === 0}
+            className="bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-300 text-white px-3.5 py-1.5 rounded-lg text-xs font-semibold inline-flex items-center gap-1.5 transition"
+          >
+            <Printer className="w-4 h-4" /> Print History
+          </button>
+          <button
+            type="button"
+            onClick={() => setHistoryModalOpen(false)}
+            className="text-slate-400 hover:text-slate-600 p-1"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+      </div>
+
+      {/* Date Wise Filter Bar */}
+      <div className="bg-slate-50 border border-slate-200/80 rounded-xl p-3 mb-4 grid grid-cols-1 sm:grid-cols-4 gap-3 items-end">
+        <div>
+          <label className="block text-[11px] font-semibold text-slate-600 mb-1">From Date</label>
+          <input
+            type="date"
+            value={historyFromDate}
+            onChange={e => setHistoryFromDate(e.target.value)}
+            className="w-full border border-slate-200 bg-white px-2.5 py-1.5 rounded-lg text-xs outline-none focus:border-indigo-500"
+          />
+        </div>
+        <div>
+          <label className="block text-[11px] font-semibold text-slate-600 mb-1">To Date</label>
+          <input
+            type="date"
+            value={historyToDate}
+            onChange={e => setHistoryToDate(e.target.value)}
+            className="w-full border border-slate-200 bg-white px-2.5 py-1.5 rounded-lg text-xs outline-none focus:border-indigo-500"
+          />
+        </div>
+        <div className="sm:col-span-2 flex items-center justify-between gap-2 text-xs text-slate-600 px-1">
+          <span>
+            Showing <strong>{filteredReturnHistory.length}</strong> records ({returnPeriodText})
+          </span>
+          {(historyFromDate || historyToDate) && (
+            <button
+              type="button"
+              onClick={() => {
+                setHistoryFromDate('');
+                setHistoryToDate('');
+              }}
+              className="text-indigo-600 font-semibold hover:underline"
+            >
+              Clear Dates
+            </button>
+          )}
+        </div>
+      </div>
+
+      <div className="overflow-y-auto flex-1">
+        {loadingHistory ? (
+          <p className="text-center py-8 text-sm text-slate-500">Loading return history...</p>
+        ) : filteredReturnHistory.length === 0 ? (
+          <p className="text-center py-8 text-sm text-slate-400">
+            No return records found for selected date range.
+          </p>
+        ) : (
+          <table className="w-full text-left border-collapse text-sm">
+            <thead>
+              <tr className="bg-slate-50 border-b text-xs font-semibold text-slate-500 uppercase">
+                <th className="p-3">Return #</th>
+                <th className="p-3">Product</th>
+                <th className="p-3">Type</th>
+                <th className="p-3 text-right">Qty</th>
+                <th className="p-3">Reason</th>
+                <th className="p-3">Date</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {filteredReturnHistory.map(item => (
+                <tr key={item._id} className="hover:bg-slate-50">
+                  <td className="p-3 font-mono text-xs font-semibold text-slate-700">
+                    {item.returnNumber}
+                  </td>
+                  <td className="p-3">
+                    <p className="font-medium text-slate-800">
+                      {item.product?.name || 'Deleted Product'}
+                    </p>
+                    <span className="text-xs text-slate-400">{item.product?.sku}</span>
+                  </td>
+                  <td className="p-3">
+                    {item.returnType === 'SALES_RETURN' ? (
+                      <span className="bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded-md text-xs font-semibold">
+                        Sales Return (+)
+                      </span>
+                    ) : (
+                      <span className="bg-amber-50 text-amber-700 px-2 py-0.5 rounded-md text-xs font-semibold">
+                        Purchase Return (-)
+                      </span>
+                    )}
+                  </td>
+                  <td className="p-3 text-right font-bold text-slate-800">{item.quantity}</td>
+                  <td className="p-3 text-xs text-slate-600">{item.reason || '-'}</td>
+                  <td className="p-3 text-xs text-slate-500">
+                    {item.createdAt ? new Date(item.createdAt).toLocaleDateString() : '-'}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
+    </div>
+  </div>
+)}
+
+      
+
+
     </div>
   );
 }

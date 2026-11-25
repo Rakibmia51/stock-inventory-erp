@@ -11,6 +11,7 @@ import {
   Plus
 } from 'lucide-react';
 import { addPurchase, deletePurchase } from '../services/api';
+import { DEFAULT_ERP_SETTINGS } from './Settings';
 
 const getEffectiveUser = (propUser) => {
   if (propUser) return propUser;
@@ -35,6 +36,7 @@ export default function Purchases({
   suppliers = [],
   products = [],
   purchases = [],
+  settings,
   reloadData,
   user
 }) {
@@ -737,157 +739,207 @@ export default function Purchases({
       </div>
 
       {/* Purchase Invoice View & Print Modal */}
-      {selectedPurchase && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-3 sm:p-4">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full p-4 sm:p-6 max-h-[92vh] overflow-y-auto">
-            {/* Top Bar */}
-            <div className="flex flex-wrap justify-between items-center border-b pb-3 mb-5 gap-2 no-print">
-              <h3 className="text-base font-bold text-slate-800">Purchase Invoice Preview</h3>
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={handlePrint}
-                  className="bg-indigo-600 hover:bg-indigo-700 text-white px-3.5 py-1.5 rounded-lg text-xs font-semibold inline-flex items-center gap-1.5 transition"
-                >
-                  <Printer className="w-4 h-4" /> Print Invoice
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setSelectedPurchase(null)}
-                  className="text-slate-400 hover:text-slate-700 p-1"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-            </div>
+      {selectedPurchase && (() => {
+        const activeSettings = {
+          ...DEFAULT_ERP_SETTINGS,
+          ...(settings || {})
+        };
+        const currency = activeSettings.currencySymbol || '৳';
+        const companyTitle = (activeSettings.companyName || 'NEXUS ERP').trim();
+        const hasLogo = Boolean(activeSettings.logoUrl && activeSettings.logoUrl.trim());
 
-            {/* Printable Invoice Body */}
-            <div id="printable-purchase-invoice" className="space-y-6 text-slate-800">
-              <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start border-b pb-4 gap-3">
-                <div>
-                  <h2 className="text-xl sm:text-2xl font-extrabold tracking-tight text-slate-900">
-                    PURCHASE INVOICE
-                  </h2>
-                  <p className="text-xs text-slate-500 mt-0.5">
-                    Stock In & Supplier Purchase Receipt
-                  </p>
-                </div>
-                <div className="sm:text-right text-xs space-y-1">
-                  <p className="font-bold text-sm text-slate-800">
-                    PO ID:{' '}
-                    {selectedPurchase.purchaseNumber ||
-                      `#${selectedPurchase._id?.slice(-6).toUpperCase()}`}
-                  </p>
-                  <p className="text-slate-600">
-                    Date: {new Date(selectedPurchase.createdAt).toLocaleDateString()}
-                  </p>
-                  <p className="text-slate-600">
-                    Method: <span className="font-semibold">{selectedPurchase.paymentMethod || 'Cash'}</span>
-                    {selectedPurchase.mobileProvider ? ` (${selectedPurchase.mobileProvider})` : ''}
-                  </p>
+        const totalAmt = Number(selectedPurchase.totalAmount || 0);
+        const paidAmt = Number(selectedPurchase.paidAmount || 0);
+        const dueAmt =
+          selectedPurchase.dueAmount !== undefined
+            ? Number(selectedPurchase.dueAmount || 0)
+            : Math.max(0, totalAmt - paidAmt);
+
+        return (
+          <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-3 sm:p-4">
+            <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full p-4 sm:p-6 max-h-[92vh] overflow-y-auto">
+              {/* Top Bar */}
+              <div className="flex flex-wrap justify-between items-center border-b pb-3 mb-5 gap-2 no-print">
+                <h3 className="text-base font-bold text-slate-800">Purchase Invoice Preview</h3>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={handlePrint}
+                    className="bg-indigo-600 hover:bg-indigo-700 text-white px-3.5 py-1.5 rounded-lg text-xs font-semibold inline-flex items-center gap-1.5 transition"
+                  >
+                    <Printer className="w-4 h-4" /> Print Invoice
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedPurchase(null)}
+                    className="text-slate-400 hover:text-slate-700 p-1"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
                 </div>
               </div>
 
-              <div className="bg-slate-50 p-4 rounded-xl border border-slate-200/70 text-sm">
-                <p className="text-xs font-semibold uppercase text-slate-400 mb-1">
-                  Supplier Details
-                </p>
-                <p className="font-bold text-slate-900">
-                  {selectedPurchase.supplier?.companyName ||
-                    selectedPurchase.supplier?.name ||
-                    'Unknown Supplier'}
-                </p>
-                {selectedPurchase.supplier?.name && selectedPurchase.supplier?.companyName && (
-                  <p className="text-xs text-slate-600">
-                    Contact: {selectedPurchase.supplier.name}
-                  </p>
-                )}
-                {selectedPurchase.supplier?.phone && (
-                  <p className="text-xs text-slate-600">
-                    Phone: {selectedPurchase.supplier.phone}
-                  </p>
-                )}
-              </div>
-
-              <div className="overflow-x-auto">
-                <table className="w-full text-left border-collapse text-sm min-w-[460px]">
-                  <thead>
-                    <tr className="bg-slate-100 border-y text-xs font-semibold text-slate-600 uppercase">
-                      <th className="p-3">#</th>
-                      <th className="p-3">Product</th>
-                      <th className="p-3 text-right">Qty</th>
-                      <th className="p-3 text-right">Unit Price</th>
-                      <th className="p-3 text-right">Line Total</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y">
-                    {(selectedPurchase.items || []).map((item, index) => {
-                      const qty = Number(item.quantity || 0);
-                      const unitPrice = Number(item.purchasePrice || 0);
-                      const lineTotal = qty * unitPrice;
-
-                      return (
-                        <tr key={item._id || index}>
-                          <td className="p-3 text-slate-500">{index + 1}</td>
-                          <td className="p-3">
-                            <p className="font-semibold text-slate-800">
-                              {item.product?.name || 'Product'}
-                            </p>
-                            {item.product?.sku && (
-                              <span className="text-xs font-mono text-slate-400">
-                                SKU: {item.product.sku}
-                              </span>
-                            )}
-                          </td>
-                          <td className="p-3 text-right font-medium">{qty}</td>
-                          <td className="p-3 text-right">৳ {unitPrice.toLocaleString()}</td>
-                          <td className="p-3 text-right font-semibold">
-                            ৳ {lineTotal.toLocaleString()}
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-
-              {(() => {
-                const totalAmt = Number(selectedPurchase.totalAmount || 0);
-                const paidAmt = Number(selectedPurchase.paidAmount || 0);
-                const dueAmt =
-                  selectedPurchase.dueAmount !== undefined
-                    ? Number(selectedPurchase.dueAmount || 0)
-                    : Math.max(0, totalAmt - paidAmt);
-
-                return (
-                  <div className="flex justify-end pt-2">
-                    <div className="w-full sm:w-64 space-y-1.5 text-sm border-t pt-3">
-                      <div className="flex justify-between font-bold text-slate-900">
-                        <span>Grand Total:</span>
-                        <span>৳ {totalAmt.toLocaleString()}</span>
+              {/* Printable Invoice Body */}
+              <div id="printable-purchase-invoice" className="space-y-6 text-slate-800">
+                {/* Company & PO Header */}
+                <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start border-b pb-4 gap-4">
+                  <div className="flex items-start gap-3">
+                    {hasLogo && (
+                      <img
+                        src={activeSettings.logoUrl}
+                        alt={companyTitle}
+                        className="w-12 h-12 rounded-xl object-contain border border-slate-200 bg-white p-1 shrink-0"
+                      />
+                    )}
+                    <div>
+                      <h2 className="text-lg sm:text-xl font-extrabold tracking-tight text-slate-900">
+                        {companyTitle}
+                      </h2>
+                      <p className="text-xs font-semibold uppercase tracking-wide text-indigo-600">
+                        Purchase Invoice — Stock In Receipt
+                      </p>
+                      {activeSettings.address && (
+                        <p className="text-xs text-slate-600 mt-0.5">{activeSettings.address}</p>
+                      )}
+                      <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-slate-500 mt-0.5">
+                        {activeSettings.phone && <span>Phone: {activeSettings.phone}</span>}
+                        {activeSettings.email && <span>Email: {activeSettings.email}</span>}
                       </div>
-                      <div className="flex justify-between text-emerald-700 font-medium">
-                        <span>Paid Amount:</span>
-                        <span>৳ {paidAmt.toLocaleString()}</span>
-                      </div>
-                      <div className="flex justify-between text-red-600 font-bold border-t pt-1.5">
-                        <span>Due Amount:</span>
-                        <span>৳ {dueAmt.toLocaleString()}</span>
-                      </div>
+                      {activeSettings.taxId && (
+                        <p className="text-xs text-slate-500 mt-0.5">BIN/VAT: {activeSettings.taxId}</p>
+                      )}
                     </div>
                   </div>
-                );
-              })()}
 
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 sm:gap-4 pt-10 text-center text-xs text-slate-600">
-                <div className="border-t pt-2">Received By</div>
-                <div className="border-t pt-2">Checked By</div>
-                <div className="border-t pt-2">Authorized Signature</div>
+                  <div className="sm:text-right text-xs space-y-1 shrink-0">
+                    <p className="font-bold text-sm text-slate-800">
+                      PO ID:{' '}
+                      {selectedPurchase.purchaseNumber ||
+                        `#${selectedPurchase._id?.slice(-6).toUpperCase()}`}
+                    </p>
+                    <p className="text-slate-600">
+                      Date: {new Date(selectedPurchase.createdAt).toLocaleDateString()}
+                    </p>
+                    <p className="text-slate-600">
+                      Method:{' '}
+                      <span className="font-semibold">{selectedPurchase.paymentMethod || 'Cash'}</span>
+                      {selectedPurchase.mobileProvider ? ` (${selectedPurchase.mobileProvider})` : ''}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Supplier Details */}
+                <div className="bg-slate-50 p-4 rounded-xl border border-slate-200/70 text-sm">
+                  <p className="text-xs font-semibold uppercase text-slate-400 mb-1">
+                    Supplier Details
+                  </p>
+                  <p className="font-bold text-slate-900">
+                    {selectedPurchase.supplier?.companyName ||
+                      selectedPurchase.supplier?.name ||
+                      'Unknown Supplier'}
+                  </p>
+                  {selectedPurchase.supplier?.name && selectedPurchase.supplier?.companyName && (
+                    <p className="text-xs text-slate-600">
+                      Contact: {selectedPurchase.supplier.name}
+                    </p>
+                  )}
+                  {selectedPurchase.supplier?.phone && (
+                    <p className="text-xs text-slate-600">
+                      Phone: {selectedPurchase.supplier.phone}
+                    </p>
+                  )}
+                </div>
+
+                {/* Items Table */}
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left border-collapse text-sm min-w-[460px]">
+                    <thead>
+                      <tr className="bg-slate-100 border-y text-xs font-semibold text-slate-600 uppercase">
+                        <th className="p-3">#</th>
+                        <th className="p-3">Product</th>
+                        <th className="p-3 text-right">Qty</th>
+                        <th className="p-3 text-right">Unit Price</th>
+                        <th className="p-3 text-right">Line Total</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y">
+                      {(selectedPurchase.items || []).map((item, index) => {
+                        const qty = Number(item.quantity || 0);
+                        const unitPrice = Number(item.purchasePrice || 0);
+                        const lineTotal = qty * unitPrice;
+
+                        return (
+                          <tr key={item._id || index}>
+                            <td className="p-3 text-slate-500">{index + 1}</td>
+                            <td className="p-3">
+                              <p className="font-semibold text-slate-800">
+                                {item.product?.name || 'Product'}
+                              </p>
+                              {item.product?.sku && (
+                                <span className="text-xs font-mono text-slate-400">
+                                  SKU: {item.product.sku}
+                                </span>
+                              )}
+                            </td>
+                            <td className="p-3 text-right font-medium">{qty}</td>
+                            <td className="p-3 text-right">
+                              {currency} {unitPrice.toLocaleString()}
+                            </td>
+                            <td className="p-3 text-right font-semibold">
+                              {currency} {lineTotal.toLocaleString()}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Totals Summary */}
+                <div className="flex justify-end pt-2">
+                  <div className="w-full sm:w-64 space-y-1.5 text-sm border-t pt-3">
+                    <div className="flex justify-between font-bold text-slate-900">
+                      <span>Grand Total:</span>
+                      <span>
+                        {currency} {totalAmt.toLocaleString()}
+                      </span>
+                    </div>
+                    <div className="flex justify-between text-emerald-700 font-medium">
+                      <span>Paid Amount:</span>
+                      <span>
+                        {currency} {paidAmt.toLocaleString()}
+                      </span>
+                    </div>
+                    <div className="flex justify-between text-red-600 font-bold border-t pt-1.5">
+                      <span>Due Amount:</span>
+                      <span>
+                        {currency} {dueAmt.toLocaleString()}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Signature Block */}
+                {activeSettings.showSignatureOnPrint !== false && (
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 sm:gap-4 pt-10 text-center text-xs text-slate-600">
+                    <div className="border-t pt-2">Received By</div>
+                    <div className="border-t pt-2">Checked By</div>
+                    <div className="border-t pt-2">Authorized Signature ({companyTitle})</div>
+                  </div>
+                )}
+
+                {/* Footer Note */}
+                {activeSettings.invoiceFooter && (
+                  <p className="text-center text-xs text-slate-500 pt-3 border-t border-dashed">
+                    {activeSettings.invoiceFooter}
+                  </p>
+                )}
               </div>
             </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
+
     </div>
   );
 }
