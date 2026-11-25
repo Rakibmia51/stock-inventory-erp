@@ -35,6 +35,9 @@ export const loginUser = (data) => API.post('/auth/login', data);
 export const registerUser = (data) => API.post('/auth/register', data);
 export const getUsers = () => API.get('/auth/users');
 export const updatePermissions = (data) => API.patch('/auth/permissions', data);
+export const deleteUser = (id) => API.delete(`/auth/${id}`);
+export const changeOwnPassword = (data) => API.put('/auth/change-password', data);
+export const adminResetUserPassword = (data) => API.put('/auth/users/reset-password', data);
 
 // Existing ERP Endpoints
 export const getProducts = () => API.get('/products');

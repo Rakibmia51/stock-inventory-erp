@@ -18,9 +18,11 @@ import {
   TrendingUp,
   CalendarClock,
   FileSpreadsheet,
-  Settings as SettingsIcon
+  Settings as SettingsIcon,
+  User
 } from 'lucide-react';
 import { DEFAULT_ERP_SETTINGS } from './Settings';
+
 
 export default function Sidebar({
   activeTab,
@@ -120,6 +122,12 @@ export default function Sidebar({
       label: 'Settings',
       icon: SettingsIcon,
       show: isAdmin || Boolean(user?.permissions?.settings)
+    },
+    {
+      id: 'profile',
+      label: 'User Profile',
+      icon: User,
+      show: true
     }
   ].filter(item => item.show);
 

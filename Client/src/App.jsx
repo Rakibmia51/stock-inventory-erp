@@ -1,4 +1,6 @@
 
+
+
 // import { useState, useEffect, useCallback } from 'react';
 // import { Menu } from 'lucide-react';
 // import Sidebar from './components/Sidebar';
@@ -11,15 +13,6 @@
 // import UserManagement from './components/UserManagement';
 // import Auth from './components/Auth';
 // import Accounts from './components/Accounts';
-
-// import {
-//   getProducts,
-//   getSuppliers,
-//   getClients,
-//   getPurchases,
-//   getInvoices,
-//   getAccountTransactions
-// } from './services/api';
 // import PartyLedger from './components/PartyLedger';
 // import ProfitLoss from './components/ProfitLoss';
 // import CashFlowDayBook from './components/CashFlowDayBook';
@@ -28,7 +21,15 @@
 //   DEFAULT_ERP_SETTINGS,
 //   fetchErpSettings
 // } from './components/Settings';
-
+// import {
+//   getProducts,
+//   getSuppliers,
+//   getClients,
+//   getPurchases,
+//   getInvoices,
+//   getAccountTransactions
+// } from './services/api';
+// import ChangePasswordModal from './components/ChangePasswordModal';
 
 // const normalizeArray = (res, key) => {
 //   const payload = res?.data;
@@ -39,7 +40,6 @@
 // };
 
 // export default function App() {
-//   // LocalStorage থেকে ইউজার স্টেট লোড করা
 //   const [user, setUser] = useState(() => {
 //     try {
 //       const saved = localStorage.getItem('nexusUser') || localStorage.getItem('user');
@@ -60,18 +60,30 @@
 //   const [invoices, setInvoices] = useState([]);
 //   const [accountTransactions, setAccountTransactions] = useState([]);
 
+//   const syncSettings = useCallback(async () => {
+//     const latest = await fetchErpSettings();
+//     if (latest) {
+//       setErpSettings({ ...DEFAULT_ERP_SETTINGS, ...latest });
+//     }
+//   }, []);
+
 //   const loadData = useCallback(async () => {
 //     if (!user) return;
 //     try {
-//       // প্রতিটি API কলের সাথে .catch যুক্ত করা হয়েছে যাতে কোনো একটিতে 403 ফেইল করলে অন্যগুলো আটকে না যায়
-//       const [prodRes, suppRes, clientRes, purRes, invRes, accTransRes] = await Promise.all([
+//       const [
+//         prodRes,
+//         suppRes,
+//         clientRes,
+//         purRes,
+//         invRes,
+//         accTransRes
+//       ] = await Promise.all([
 //         getProducts().catch(() => ({ data: [] })),
 //         getSuppliers().catch(() => ({ data: [] })),
 //         getClients().catch(() => ({ data: [] })),
 //         getPurchases().catch(() => ({ data: [] })),
 //         getInvoices().catch(() => ({ data: [] })),
-//         getAccountTransactions().catch(() => ({ data: [] })),
-//         fetchErpSettings().catch(() => ({ ...DEFAULT_ERP_SETTINGS }))
+//         getAccountTransactions().catch(() => ({ data: [] }))
 //       ]);
 
 //       setProducts(normalizeArray(prodRes, 'products'));
@@ -80,10 +92,12 @@
 //       setPurchases(normalizeArray(purRes, 'purchases'));
 //       setInvoices(normalizeArray(invRes, 'invoices'));
 //       setAccountTransactions(normalizeArray(accTransRes, 'transactions'));
+
+//       await syncSettings();
 //     } catch (err) {
 //       console.error('Error fetching data:', err);
 //     }
-//   }, [user]);
+//   }, [user, syncSettings]);
 
 //   useEffect(() => {
 //     if (user) {
@@ -98,7 +112,6 @@
 //     setUser(null);
 //   };
 
-//   // ইউজার লগইন না থাকলে Login/Register পেজ দেখাবে
 //   if (!user) {
 //     return (
 //       <Auth
@@ -112,7 +125,6 @@
 
 //   return (
 //     <div className="min-h-screen bg-slate-50 flex font-sans text-slate-800">
-//       {/* Left Sidebar */}
 //       <Sidebar
 //         activeTab={activeTab}
 //         setActiveTab={setActiveTab}
@@ -120,11 +132,10 @@
 //         setIsOpen={setSidebarOpen}
 //         user={user}
 //         onLogout={handleLogout}
+//         settings={erpSettings}
 //       />
 
-//       {/* Right Content Wrapper */}
 //       <div className="flex-1 flex flex-col min-w-0">
-//         {/* Top Mobile Header */}
 //         <header className="lg:hidden bg-white border-b border-slate-200 h-16 px-4 flex items-center justify-between sticky top-0 z-30">
 //           <button
 //             type="button"
@@ -134,11 +145,12 @@
 //           >
 //             <Menu className="w-6 h-6" />
 //           </button>
-//           <span className="font-bold text-slate-800">NEXUS ERP</span>
+//           <span className="font-bold text-slate-800">
+//             {erpSettings.companyName || 'NEXUS ERP'}
+//           </span>
 //           <div className="w-8" />
 //         </header>
 
-//         {/* Main Workspace */}
 //         <main className="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-8">
 //           {activeTab === 'dashboard' && (
 //             <Dashboard
@@ -149,6 +161,7 @@
 //               purchases={purchases}
 //               transactions={accountTransactions}
 //               accountTransactions={accountTransactions}
+//               settings={erpSettings}
 //               reloadData={loadData}
 //               user={user}
 //             />
@@ -157,6 +170,9 @@
 //           {activeTab === 'products' && (
 //             <Products
 //               products={products}
+//               suppliers={suppliers}
+//               clients={clients}
+//               settings={erpSettings}
 //               reloadData={loadData}
 //               user={user}
 //             />
@@ -165,6 +181,7 @@
 //           {activeTab === 'suppliers' && (
 //             <Suppliers
 //               suppliers={suppliers}
+//               settings={erpSettings}
 //               reloadData={loadData}
 //               user={user}
 //             />
@@ -173,6 +190,7 @@
 //           {activeTab === 'clients' && (
 //             <Clients
 //               clients={clients}
+//               settings={erpSettings}
 //               reloadData={loadData}
 //               user={user}
 //             />
@@ -183,6 +201,7 @@
 //               suppliers={suppliers}
 //               products={products}
 //               purchases={purchases}
+//               settings={erpSettings}
 //               reloadData={loadData}
 //               user={user}
 //             />
@@ -193,6 +212,7 @@
 //               clients={clients}
 //               products={products}
 //               invoices={invoices}
+//               settings={erpSettings}
 //               reloadData={loadData}
 //               user={user}
 //             />
@@ -215,6 +235,7 @@
 //               products={products}
 //               purchases={purchases}
 //               invoices={invoices}
+//               settings={erpSettings}
 //               reloadData={loadData}
 //               user={user}
 //             />
@@ -222,13 +243,13 @@
 
 //           {activeTab === 'ledger' && (
 //             <PartyLedger
-//               //ledger={ledger}
 //               clients={clients}
 //               suppliers={suppliers}
 //               invoices={invoices}
 //               purchases={purchases}
 //               transactions={accountTransactions}
 //               accountTransactions={accountTransactions}
+//               settings={erpSettings}
 //               reloadData={loadData}
 //               user={user}
 //             />
@@ -236,17 +257,11 @@
 
 //           {activeTab === 'pnl' && (
 //             <ProfitLoss
-//               products={products}
-              
-//               clients={clients}
-//               suppliers={suppliers}
-
 //               invoices={invoices}
-//               purchases={purchases}
-
+//               products={products}
 //               transactions={accountTransactions}
 //               accountTransactions={accountTransactions}
-
+//               settings={erpSettings}
 //               reloadData={loadData}
 //               user={user}
 //             />
@@ -254,17 +269,11 @@
 
 //           {activeTab === 'cashflow' && (
 //             <CashFlowDayBook
-//               products={products}
-
-//               clients={clients}
-//               suppliers={suppliers}
-
 //               invoices={invoices}
 //               purchases={purchases}
-
 //               transactions={accountTransactions}
 //               accountTransactions={accountTransactions}
-              
+//               settings={erpSettings}
 //               reloadData={loadData}
 //               user={user}
 //             />
@@ -279,7 +288,7 @@
 //               purchases={purchases}
 //               transactions={accountTransactions}
 //               accountTransactions={accountTransactions}
-              
+//               settings={erpSettings}
 //               reloadData={loadData}
 //               user={user}
 //             />
@@ -297,14 +306,24 @@
 //               settings={erpSettings}
 //               onSettingsChange={setErpSettings}
 //               reloadData={loadData}
+//               user={user}
 //             />
 //           )}
 
+//           {activeTab === 'profile' && (
+//             <ChangePasswordModal 
+//               currentUser={currentUser}
+//               reloadData={loadData}
+//               user={user}
+//             />
+//             )}
 //         </main>
 //       </div>
 //     </div>
 //   );
 // }
+
+
 
 import { useState, useEffect, useCallback } from 'react';
 import { Menu } from 'lucide-react';
@@ -334,6 +353,7 @@ import {
   getInvoices,
   getAccountTransactions
 } from './services/api';
+import ChangePasswordModal from './components/ChangePasswordModal';
 
 const normalizeArray = (res, key) => {
   const payload = res?.data;
@@ -409,6 +429,15 @@ export default function App() {
     }
   }, [user, loadData]);
 
+  const handleLoginSuccess = (userData) => {
+    localStorage.setItem('nexusUser', JSON.stringify(userData));
+    if (userData?.token) {
+      localStorage.setItem('token', userData.token);
+    }
+    setUser(userData);
+    setActiveTab('dashboard');
+  };
+
   const handleLogout = () => {
     localStorage.removeItem('nexusUser');
     localStorage.removeItem('user');
@@ -417,14 +446,7 @@ export default function App() {
   };
 
   if (!user) {
-    return (
-      <Auth
-        onLoginSuccess={(userData) => {
-          localStorage.setItem('nexusUser', JSON.stringify(userData));
-          setUser(userData);
-        }}
-      />
-    );
+    return <Auth onLoginSuccess={handleLoginSuccess} />;
   }
 
   return (
@@ -449,7 +471,7 @@ export default function App() {
           >
             <Menu className="w-6 h-6" />
           </button>
-          <span className="font-bold text-slate-800">
+          <span className="font-bold text-slate-800 truncate">
             {erpSettings.companyName || 'NEXUS ERP'}
           </span>
           <div className="w-8" />
@@ -609,6 +631,16 @@ export default function App() {
               accountTransactions={accountTransactions}
               settings={erpSettings}
               onSettingsChange={setErpSettings}
+              reloadData={loadData}
+              user={user}
+            />
+          )}
+
+          {activeTab === 'profile' && (
+            <ChangePasswordModal
+              isOpen={true}
+              onClose={() => setActiveTab('dashboard')}
+              currentUser={user}
               reloadData={loadData}
               user={user}
             />

@@ -1,309 +1,12 @@
 
-// import { useState, useEffect } from 'react';
-// import { getUsers, updatePermissions, createNewUser } from '../services/api';
-// import { Shield, Save, UserPlus, X } from 'lucide-react';
-
-// export default function UserManagement({ currentUser }) {
-//   const [users, setUsers] = useState([]);
-//   const [loading, setLoading] = useState(false);
-//   const [showAddModal, setShowAddModal] = useState(false);
-
-//   // নতুন ইউজার ফর্ম স্টেট
-//   const [newUser, setNewUser] = useState({
-//     name: '',
-//     email: '',
-//     password: '',
-//     userType: 'staff',
-//     permissions: {
-//       products: false,
-//       suppliers: false,
-//       clients: false,
-//       purchases: false,
-//       invoices: false,
-//       accounts: false,
-//       reports: false,
-//       users: false
-//     }
-//   });
-
-//   const fetchUsers = async () => {
-//     try {
-//       const { data } = await getUsers();
-//       setUsers(data);
-//     } catch (err) {
-//       console.error('Error fetching users:', err);
-//     }
-//   };
-
-//   useEffect(() => {
-//     fetchUsers();
-//   }, []);
-
-//   const handleCheckboxChange = (userId, moduleKey) => {
-//     setUsers(users.map(u => {
-//       if (u._id === userId) {
-//         const currentPerms = u.permissions || {};
-//         return {
-//           ...u,
-//           permissions: {
-//             ...currentPerms,
-//             [moduleKey]: !currentPerms[moduleKey]
-//           }
-//         };
-//       }
-//       return u;
-//     }));
-//   };
-
-//   const handleSave = async (user) => {
-//     setLoading(true);
-//     try {
-//       await updatePermissions({
-//         userId: user._id,
-//         userType: user.userType,
-//         permissions: user.permissions
-//       });
-//       alert(`Permissions updated successfully for ${user.name}!`);
-//       fetchUsers();
-//     } catch (err) {
-//       alert('Failed to update permissions');
-//     } finally {
-//       setLoading(false);
-//     }
-//   };
-
-//   // নতুন ইউজার সাবমিট হ্যান্ডলার
-//   const handleCreateUserSubmit = async (e) => {
-//     e.preventDefault();
-//     setLoading(true);
-//     try {
-//       await createNewUser(newUser);
-//       alert('New user created successfully!');
-//       setShowAddModal(false);
-//       setNewUser({
-//         name: '', email: '', password: '', userType: 'staff',
-//         permissions: 
-//           { products: false, 
-//             suppliers: false, 
-//             clients: false, 
-//             purchases: false, 
-//             invoices: false, 
-//             accounts: false,
-//             reports: false, 
-//           }
-//       });
-//       fetchUsers();
-//     } catch (err) {
-//       alert(err.response?.data?.message || 'Failed to create user');
-//     } finally {
-//       setLoading(false);
-//     }
-//   };
-
-// // ১. অ্যাক্সেস চেক আপডেট:
-// const isAdmin = (currentUser?.userType || '').toLowerCase() === 'admin' || (currentUser?.role || '').toLowerCase() === 'admin';
-// if (!isAdmin && !currentUser?.permissions?.users) {
-//   return <div className="p-6 text-red-500 font-bold">Access Denied. You do not have permission to manage users.</div>;
-// }
-
-// // ২. মডিউল লিস্টে 'users' চেক বক্স যুক্ত করা:
-// const modules = [
-//   { key: 'products', label: 'Inventory / Products' },
-//   { key: 'suppliers', label: 'Suppliers' },
-//   { key: 'clients', label: 'Clients' },
-//   { key: 'purchases', label: 'Purchase Orders' },
-//   { key: 'invoices', label: 'Sales & Invoices' },
-//   { key: 'accounts', label: 'Accounts / Finance' },
-//   { key: 'reports', label: 'Reports' },
-//   { key: 'users', label: 'User Management' } // নতুন চেক বক্স
-// ];
-
-//   return (
-//     <div className="space-y-6">
-//       <div className="flex justify-between items-center">
-//         <div>
-//           <h2 className="text-2xl font-bold text-slate-800">User & Permission Control</h2>
-//           <p className="text-sm text-slate-500">Create staff accounts and assign dynamic module permissions.</p>
-//         </div>
-//         <button
-//           onClick={() => setShowAddModal(true)}
-//           className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2.5 rounded-xl text-sm font-semibold flex items-center gap-2 shadow-lg shadow-indigo-600/20 transition"
-//         >
-//           <UserPlus className="w-4 h-4" /> Add New User
-//         </button>
-//       </div>
-
-//       {/* ইউজার লিস্ট টেবিল */}
-//       <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-//         <div className="overflow-x-auto">
-//           <table className="w-full text-left border-collapse min-w-[800px]">
-//             <thead>
-//               <tr className="bg-slate-50 border-b text-xs font-semibold text-slate-500 uppercase">
-//                 <th className="p-4">User Details</th>
-//                 <th className="p-4">User Type</th>
-//                 <th className="p-4">Module Permissions</th>
-//                 <th className="p-4 text-right">Action</th>
-//               </tr>
-//             </thead>
-//             <tbody className="divide-y text-sm">
-//               {users.map(u => (
-//                 <tr key={u._id} className="hover:bg-slate-50/50">
-//                   <td className="p-4">
-//                     <p className="font-bold text-slate-800">{u.name}</p>
-//                     <p className="text-xs text-slate-400">{u.email}</p>
-//                   </td>
-//                   <td className="p-4">
-//                     <select 
-//                       value={u.userType || 'staff'}
-//                       onChange={(e) => {
-//                         const val = e.target.value;
-//                         setUsers(users.map(item => item._id === u._id ? { ...item, userType: val } : item));
-//                       }}
-//                       className="border border-slate-200 p-2 rounded-xl text-xs font-semibold bg-white"
-//                     >
-//                       <option value="admin">Admin</option>
-//                       <option value="staff">Staff</option>
-//                       <option value="others">Others</option>
-//                     </select>
-//                   </td>
-//                   <td className="p-4">
-//                     <div className="flex flex-wrap gap-3">
-//                       {modules.map(mod => (
-//                         <label key={mod.key} className="flex items-center gap-1.5 text-xs font-medium text-slate-700 cursor-pointer select-none">
-//                           <input 
-//                             type="checkbox"
-//                             checked={u.permissions?.[mod.key] || false}
-//                             onChange={() => handleCheckboxChange(u._id, mod.key)}
-//                             className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 w-4 h-4"
-//                           />
-//                           {mod.label}
-//                         </label>
-//                       ))}
-//                     </div>
-//                   </td>
-//                   <td className="p-4 text-right">
-//                     <button 
-//                       onClick={() => handleSave(u)}
-//                       disabled={loading}
-//                       className="bg-indigo-600 hover:bg-indigo-700 text-white px-3.5 py-2 rounded-xl text-xs font-semibold inline-flex items-center gap-1.5 shadow-sm transition"
-//                     >
-//                       <Save className="w-3.5 h-3.5" /> Save
-//                     </button>
-//                   </td>
-//                 </tr>
-//               ))}
-//             </tbody>
-//           </table>
-//         </div>
-//       </div>
-
-//       {/* নতুন ইউজার তৈরির মডাল (Modal) */}
-//       {showAddModal && (
-//         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-//           <div className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl space-y-4">
-//             <div className="flex justify-between items-center border-b pb-3">
-//               <h3 className="text-lg font-bold text-slate-800">Create New User Account</h3>
-//               <button onClick={() => setShowAddModal(false)} className="text-slate-400 hover:text-slate-600">
-//                 <X className="w-5 h-5" />
-//               </button>
-//             </div>
-
-//             <form onSubmit={handleCreateUserSubmit} className="space-y-4">
-//               <div>
-//                 <label className="block text-xs font-semibold text-slate-600 mb-1">Full Name</label>
-//                 <input
-//                   type="text"
-//                   placeholder="Staff Name"
-//                   value={newUser.name}
-//                   onChange={(e) => setNewUser({ ...newUser, name: e.target.value })}
-//                   className="w-full px-4 py-2 border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-indigo-500"
-//                   required
-//                 />
-//               </div>
-
-//               <div>
-//                 <label className="block text-xs font-semibold text-slate-600 mb-1">Email Address</label>
-//                 <input
-//                   type="email"
-//                   placeholder="staff@nexuserp.com"
-//                   value={newUser.email}
-//                   onChange={(e) => setNewUser({ ...newUser, email: e.target.value })}
-//                   className="w-full px-4 py-2 border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-indigo-500"
-//                   required
-//                 />
-//               </div>
-
-//               <div>
-//                 <label className="block text-xs font-semibold text-slate-600 mb-1">Password</label>
-//                 <input
-//                   type="password"
-//                   placeholder="••••••••"
-//                   value={newUser.password}
-//                   onChange={(e) => setNewUser({ ...newUser, password: e.target.value })}
-//                   className="w-full px-4 py-2 border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-indigo-500"
-//                   required
-//                 />
-//               </div>
-
-//               <div>
-//                 <label className="block text-xs font-semibold text-slate-600 mb-1">User Type / Role</label>
-//                 <select
-//                   value={newUser.userType}
-//                   onChange={(e) => setNewUser({ ...newUser, userType: e.target.value })}
-//                   className="w-full px-4 py-2 border border-slate-200 rounded-xl text-sm bg-white outline-none focus:ring-2 focus:ring-indigo-500"
-//                 >
-//                   <option value="staff">Staff</option>
-//                   <option value="others">Others</option>
-//                   <option value="admin">Admin</option>
-//                 </select>
-//               </div>
-
-//               <div>
-//                 <label className="block text-xs font-semibold text-slate-600 mb-2">Initial Module Permissions</label>
-//                 <div className="grid grid-cols-2 gap-2 bg-slate-50 p-3 rounded-xl border border-slate-200">
-//                   {modules.map(mod => (
-//                     <label key={mod.key} className="flex items-center gap-2 text-xs font-medium text-slate-700 cursor-pointer">
-//                       <input 
-//                         type="checkbox"
-//                         checked={newUser.permissions[mod.key]}
-//                         onChange={() => setNewUser({
-//                           ...newUser,
-//                           permissions: { ...newUser.permissions, [mod.key]: !newUser.permissions[mod.key] }
-//                         })}
-//                         className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 w-4 h-4"
-//                       />
-//                       {mod.label}
-//                     </label>
-//                   ))}
-//                 </div>
-//               </div>
-
-//               <div className="pt-3 flex gap-3 border-t">
-//                 <button
-//                   type="submit"
-//                   disabled={loading}
-//                   className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white py-2.5 rounded-xl text-sm font-semibold shadow-md transition"
-//                 >
-//                   {loading ? 'Creating...' : 'Create Account'}
-//                 </button>
-//                 <button
-//                   type="button"
-//                   onClick={() => setShowAddModal(false)}
-//                   className="px-4 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-sm font-medium"
-//                 >
-//                   Cancel
-//                 </button>
-//               </div>
-//             </form>
-//           </div>
-//         </div>
-//       )}
-//     </div>
-//   );
-// }
-
 import { useState, useEffect, useMemo } from 'react';
-import { getUsers, updatePermissions, createNewUser } from '../services/api';
+import {
+  getUsers,
+  updatePermissions,
+  createNewUser,
+  deleteUser,
+  adminResetUserPassword
+} from '../services/api';
 import {
   Shield,
   Save,
@@ -313,8 +16,13 @@ import {
   Users,
   CheckCheck,
   RotateCcw,
-  Mail
+  Mail,
+  Trash2,
+  KeyRound,
+  Eye,
+  EyeOff
 } from 'lucide-react';
+import ChangePasswordModal from './ChangePasswordModal';
 
 const MODULES = [
   { key: 'products', label: 'Inventory / Products' },
@@ -345,8 +53,17 @@ export default function UserManagement({ currentUser }) {
   const [users, setUsers] = useState([]);
   const [loadingList, setLoadingList] = useState(true);
   const [savingUserId, setSavingUserId] = useState(null);
+  const [deletingUserId, setDeletingUserId] = useState(null);
   const [creatingUser, setCreatingUser] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
+  const [showOwnPasswordModal, setShowOwnPasswordModal] = useState(false);
+
+  // Admin Reset Password Modal State
+  const [resetTargetUser, setResetTargetUser] = useState(null);
+  const [resetPasswordVal, setResetPasswordVal] = useState('');
+  const [resetConfirmVal, setResetConfirmVal] = useState('');
+  const [showResetPass, setShowResetPass] = useState(false);
+  const [resettingPassword, setResettingPassword] = useState(false);
 
   const [searchTerm, setSearchTerm] = useState('');
   const [roleFilter, setRoleFilter] = useState('ALL');
@@ -402,14 +119,27 @@ export default function UserManagement({ currentUser }) {
 
   if (!isAdmin && !currentUser?.permissions?.users) {
     return (
-      <div className="bg-white border border-red-200 rounded-2xl p-6 sm:p-8 max-w-xl mx-auto mt-6 text-center space-y-2 shadow-sm">
+      <div className="bg-white border border-red-200 rounded-2xl p-6 sm:p-8 max-w-xl mx-auto mt-6 text-center space-y-3 shadow-sm">
         <div className="w-12 h-12 rounded-2xl bg-red-50 text-red-600 flex items-center justify-center mx-auto">
           <Shield className="w-6 h-6" />
         </div>
         <h3 className="text-lg font-bold text-slate-800">Access Denied</h3>
         <p className="text-sm text-slate-500">
-          You do not have permission to manage users or module permissions.
+          You do not have permission to manage other users, but you can update your own password.
         </p>
+        <button
+          type="button"
+          onClick={() => setShowOwnPasswordModal(true)}
+          className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-xl text-xs font-semibold inline-flex items-center gap-1.5"
+        >
+          <KeyRound className="w-4 h-4" /> Change My Password
+        </button>
+
+        <ChangePasswordModal
+          isOpen={showOwnPasswordModal}
+          onClose={() => setShowOwnPasswordModal(false)}
+          currentUser={currentUser}
+        />
       </div>
     );
   }
@@ -466,6 +196,66 @@ export default function UserManagement({ currentUser }) {
     }
   };
 
+  const handleDeleteUser = async (userItem) => {
+    const isSelf = currentUser?._id && String(currentUser._id) === String(userItem._id);
+    if (isSelf) {
+      alert('You cannot delete your own active account.');
+      return;
+    }
+
+    const confirmed = window.confirm(
+      `Are you sure you want to delete user "${userItem.name}" (${userItem.email})?`
+    );
+    if (!confirmed) return;
+
+    setDeletingUserId(userItem._id);
+    try {
+      await deleteUser(userItem._id);
+      alert(`User "${userItem.name}" deleted successfully.`);
+      setUsers(prev => prev.filter(u => u._id !== userItem._id));
+    } catch (err) {
+      alert(err?.response?.data?.message || 'Failed to delete user');
+    } finally {
+      setDeletingUserId(null);
+    }
+  };
+
+  const openAdminResetModal = (userItem) => {
+    setResetTargetUser(userItem);
+    setResetPasswordVal('');
+    setResetConfirmVal('');
+    setShowResetPass(false);
+  };
+
+  const handleAdminResetSubmit = async (e) => {
+    e.preventDefault();
+    if (!resetTargetUser) return;
+    if (resetPasswordVal.length < 6) {
+      alert('New password must be at least 6 characters.');
+      return;
+    }
+    if (resetPasswordVal !== resetConfirmVal) {
+      alert('Passwords do not match.');
+      return;
+    }
+
+    setResettingPassword(true);
+    try {
+      await adminResetUserPassword({
+        userId: resetTargetUser._id,
+        newPassword: resetPasswordVal
+      });
+      alert(`Password updated successfully for ${resetTargetUser.name}!`);
+      setResetTargetUser(null);
+      setResetPasswordVal('');
+      setResetConfirmVal('');
+    } catch (err) {
+      alert(err?.response?.data?.message || 'Failed to reset user password');
+    } finally {
+      setResettingPassword(false);
+    }
+  };
+
   const handleCreateUserSubmit = async (e) => {
     e.preventDefault();
     setCreatingUser(true);
@@ -505,21 +295,31 @@ export default function UserManagement({ currentUser }) {
               User & Permission Control
             </h2>
             <p className="text-xs sm:text-sm text-slate-500">
-              Create staff accounts and assign dynamic module permissions.
+              Manage staff accounts, permissions, and password resets.
             </p>
           </div>
         </div>
 
-        <button
-          type="button"
-          onClick={() => {
-            setNewUser(createEmptyNewUser());
-            setShowAddModal(true);
-          }}
-          className="w-full sm:w-auto bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2.5 rounded-xl text-sm font-semibold inline-flex items-center justify-center gap-2 shadow-sm transition"
-        >
-          <UserPlus className="w-4 h-4" /> Add New User
-        </button>
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setShowOwnPasswordModal(true)}
+            className="flex-1 sm:flex-none bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 px-3.5 py-2.5 rounded-xl text-xs sm:text-sm font-semibold inline-flex items-center justify-center gap-1.5 shadow-sm transition"
+          >
+            <KeyRound className="w-4 h-4 text-amber-600" /> My Password
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              setNewUser(createEmptyNewUser());
+              setShowAddModal(true);
+            }}
+            className="flex-1 sm:flex-none bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2.5 rounded-xl text-xs sm:text-sm font-semibold inline-flex items-center justify-center gap-2 shadow-sm transition"
+          >
+            <UserPlus className="w-4 h-4" /> Add New User
+          </button>
+        </div>
       </div>
 
       {/* Summary Strip */}
@@ -588,7 +388,6 @@ export default function UserManagement({ currentUser }) {
               type="button"
               onClick={() => setSearchTerm('')}
               className="text-slate-400 hover:text-slate-600"
-              aria-label="Clear search"
             >
               <X className="w-3.5 h-3.5" />
             </button>
@@ -596,7 +395,7 @@ export default function UserManagement({ currentUser }) {
         </div>
       </div>
 
-      {/* Users List: Loading / Empty / Responsive Cards & Desktop Table */}
+      {/* Users List */}
       {loadingList ? (
         <div className="bg-white rounded-2xl border border-slate-200/80 p-10 text-center text-sm text-slate-500 shadow-sm">
           Loading user accounts and permissions...
@@ -605,9 +404,6 @@ export default function UserManagement({ currentUser }) {
         <div className="bg-white rounded-2xl border border-slate-200/80 p-10 text-center space-y-2 shadow-sm">
           <Users className="w-8 h-8 text-slate-300 mx-auto" />
           <p className="text-sm font-semibold text-slate-600">No matching users found</p>
-          <p className="text-xs text-slate-400">
-            Try adjusting your search keyword or role filter.
-          </p>
         </div>
       ) : (
         <>
@@ -616,6 +412,9 @@ export default function UserManagement({ currentUser }) {
             {filteredUsers.map(u => {
               const enabledCount = getEnabledCount(u.permissions);
               const isSaving = savingUserId === u._id;
+              const isDeleting = deletingUserId === u._id;
+              const isSelf =
+                currentUser?._id && String(currentUser._id) === String(u._id);
 
               return (
                 <div
@@ -686,7 +485,7 @@ export default function UserManagement({ currentUser }) {
                               className={`flex items-center gap-2 px-2.5 py-2 rounded-xl border text-xs font-medium cursor-pointer select-none transition ${
                                 checked
                                   ? 'bg-indigo-50/70 border-indigo-200 text-indigo-900'
-                                  : 'bg-slate-50/60 border-slate-200/70 text-slate-600 hover:bg-slate-100/70'
+                                  : 'bg-slate-50/60 border-slate-200/70 text-slate-600'
                               }`}
                             >
                               <input
@@ -703,15 +502,39 @@ export default function UserManagement({ currentUser }) {
                     </div>
                   </div>
 
-                  <button
-                    type="button"
-                    onClick={() => handleSave(u)}
-                    disabled={isSaving}
-                    className="w-full bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-400 text-white py-2.5 rounded-xl text-xs font-semibold inline-flex items-center justify-center gap-1.5 shadow-sm transition"
-                  >
-                    <Save className="w-3.5 h-3.5" />
-                    {isSaving ? 'Saving...' : 'Save Permissions'}
-                  </button>
+                  <div className="flex items-center gap-2 pt-1">
+                    <button
+                      type="button"
+                      onClick={() => handleSave(u)}
+                      disabled={isSaving || isDeleting}
+                      className="flex-1 bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-400 text-white py-2.5 rounded-xl text-xs font-semibold inline-flex items-center justify-center gap-1.5 shadow-sm transition"
+                    >
+                      <Save className="w-3.5 h-3.5" />
+                      {isSaving ? 'Saving...' : 'Save'}
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => openAdminResetModal(u)}
+                      className="bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200 px-3 py-2.5 rounded-xl text-xs font-semibold inline-flex items-center justify-center gap-1 transition"
+                      title="Reset User Password"
+                    >
+                      <KeyRound className="w-3.5 h-3.5" />
+                      <span>Password</span>
+                    </button>
+
+                    {!isSelf && (
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteUser(u)}
+                        disabled={isDeleting || isSaving}
+                        className="bg-red-50 hover:bg-red-100 disabled:opacity-50 text-red-600 border border-red-200 p-2.5 rounded-xl text-xs font-semibold inline-flex items-center justify-center transition"
+                        title="Delete User"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    )}
+                  </div>
                 </div>
               );
             })}
@@ -724,15 +547,18 @@ export default function UserManagement({ currentUser }) {
                 <thead>
                   <tr className="bg-slate-50 border-b border-slate-200/80 text-xs font-semibold text-slate-500 uppercase">
                     <th className="py-3.5 px-5 w-60">User Details</th>
-                    <th className="py-3.5 px-4 w-40">User Type</th>
+                    <th className="py-3.5 px-4 w-36">User Type</th>
                     <th className="py-3.5 px-4">Module Permissions</th>
-                    <th className="py-3.5 px-5 text-right w-36">Action</th>
+                    <th className="py-3.5 px-5 text-right w-52">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 text-sm">
                   {filteredUsers.map(u => {
                     const enabledCount = getEnabledCount(u.permissions);
                     const isSaving = savingUserId === u._id;
+                    const isDeleting = deletingUserId === u._id;
+                    const isSelf =
+                      currentUser?._id && String(currentUser._id) === String(u._id);
 
                     return (
                       <tr key={u._id} className="hover:bg-slate-50/60 align-top transition">
@@ -805,15 +631,38 @@ export default function UserManagement({ currentUser }) {
                         </td>
 
                         <td className="py-4 px-5 text-right">
-                          <button
-                            type="button"
-                            onClick={() => handleSave(u)}
-                            disabled={isSaving}
-                            className="bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-400 text-white px-4 py-2 rounded-xl text-xs font-semibold inline-flex items-center gap-1.5 shadow-sm transition"
-                          >
-                            <Save className="w-3.5 h-3.5" />
-                            {isSaving ? 'Saving...' : 'Save'}
-                          </button>
+                          <div className="inline-flex items-center justify-end gap-1.5">
+                            <button
+                              type="button"
+                              onClick={() => handleSave(u)}
+                              disabled={isSaving || isDeleting}
+                              className="bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-400 text-white px-3 py-2 rounded-xl text-xs font-semibold inline-flex items-center gap-1.5 shadow-sm transition"
+                            >
+                              <Save className="w-3.5 h-3.5" />
+                              {isSaving ? 'Saving...' : 'Save'}
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => openAdminResetModal(u)}
+                              className="bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200 p-2 rounded-xl text-xs font-semibold inline-flex items-center justify-center transition"
+                              title={`Reset Password for ${u.name}`}
+                            >
+                              <KeyRound className="w-4 h-4" />
+                            </button>
+
+                            {!isSelf && (
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteUser(u)}
+                                disabled={isDeleting || isSaving}
+                                className="bg-red-50 hover:bg-red-100 disabled:opacity-50 text-red-600 border border-red-200 p-2 rounded-xl text-xs font-semibold inline-flex items-center justify-center transition"
+                                title="Delete User"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            )}
+                          </div>
                         </td>
                       </tr>
                     );
@@ -823,6 +672,99 @@ export default function UserManagement({ currentUser }) {
             </div>
           </div>
         </>
+      )}
+
+      {/* Own Password Change Modal */}
+      <ChangePasswordModal
+        isOpen={showOwnPasswordModal}
+        onClose={() => setShowOwnPasswordModal(false)}
+        currentUser={currentUser}
+      />
+
+      {/* Admin Reset User Password Modal */}
+      {resetTargetUser && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-3 sm:p-4">
+          <div className="bg-white rounded-3xl max-w-md w-full p-5 sm:p-6 shadow-2xl space-y-4 border border-slate-200/80">
+            <div className="flex justify-between items-center border-b border-slate-100 pb-3.5">
+              <div className="flex items-center gap-2.5">
+                <div className="p-2 rounded-xl bg-amber-50 text-amber-600">
+                  <KeyRound className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="text-base sm:text-lg font-bold text-slate-800">
+                    Reset User Password
+                  </h3>
+                  <p className="text-xs text-slate-500">
+                    {resetTargetUser.name} ({resetTargetUser.email})
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setResetTargetUser(null)}
+                className="text-slate-400 hover:text-slate-600 p-1 rounded-lg hover:bg-slate-100 transition"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleAdminResetSubmit} className="space-y-3.5">
+              <div>
+                <label className="block text-xs font-semibold text-slate-600 mb-1">
+                  New Password (min 6 chars) *
+                </label>
+                <div className="relative">
+                  <input
+                    type={showResetPass ? 'text' : 'password'}
+                    value={resetPasswordVal}
+                    onChange={e => setResetPasswordVal(e.target.value)}
+                    placeholder="Enter new password"
+                    className="w-full px-3.5 py-2.5 pr-10 border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-indigo-500"
+                    required
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowResetPass(s => !s)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                  >
+                    {showResetPass ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-600 mb-1">
+                  Confirm New Password *
+                </label>
+                <input
+                  type={showResetPass ? 'text' : 'password'}
+                  value={resetConfirmVal}
+                  onChange={e => setResetConfirmVal(e.target.value)}
+                  placeholder="Re-enter new password"
+                  className="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-indigo-500"
+                  required
+                />
+              </div>
+
+              <div className="pt-3 flex gap-2.5 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setResetTargetUser(null)}
+                  className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-sm font-medium transition"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={resettingPassword}
+                  className="flex-1 bg-amber-600 hover:bg-amber-700 disabled:bg-amber-400 text-white py-2.5 rounded-xl text-sm font-semibold shadow-sm transition"
+                >
+                  {resettingPassword ? 'Resetting...' : 'Set New Password'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
       )}
 
       {/* Create New User Modal */}
@@ -842,7 +784,6 @@ export default function UserManagement({ currentUser }) {
                 type="button"
                 onClick={() => setShowAddModal(false)}
                 className="text-slate-400 hover:text-slate-600 p-1 rounded-lg hover:bg-slate-100 transition"
-                aria-label="Close modal"
               >
                 <X className="w-5 h-5" />
               </button>
