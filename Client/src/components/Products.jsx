@@ -1361,133 +1361,131 @@ const returnPeriodText =
           </div>
         </div>
       )} */}
+
+
       {/* Return History Modal */}
-{historyModalOpen && (
-  <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-    <div className="bg-white rounded-2xl shadow-xl max-w-4xl w-full p-6 max-h-[88vh] flex flex-col">
-      <div className="flex flex-wrap justify-between items-center border-b border-slate-100 pb-4 mb-4 gap-2">
-        <div>
-          <h3 className="text-lg font-bold text-slate-800">Stock Return History</h3>
-          <p className="text-xs text-slate-500">All recorded sales and purchase returns</p>
-        </div>
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={handlePrintReturnHistory}
-            disabled={loadingHistory || filteredReturnHistory.length === 0}
-            className="bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-300 text-white px-3.5 py-1.5 rounded-lg text-xs font-semibold inline-flex items-center gap-1.5 transition"
-          >
-            <Printer className="w-4 h-4" /> Print History
-          </button>
-          <button
-            type="button"
-            onClick={() => setHistoryModalOpen(false)}
-            className="text-slate-400 hover:text-slate-600 p-1"
-          >
-            <X className="w-5 h-5" />
-          </button>
-        </div>
-      </div>
+      {historyModalOpen && (
+        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-xl max-w-4xl w-full p-6 max-h-[88vh] flex flex-col">
+            <div className="flex flex-wrap justify-between items-center border-b border-slate-100 pb-4 mb-4 gap-2">
+              <div>
+                <h3 className="text-lg font-bold text-slate-800">Stock Return History</h3>
+                <p className="text-xs text-slate-500">All recorded sales and purchase returns</p>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={handlePrintReturnHistory}
+                  disabled={loadingHistory || filteredReturnHistory.length === 0}
+                  className="bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-300 text-white px-3.5 py-1.5 rounded-lg text-xs font-semibold inline-flex items-center gap-1.5 transition"
+                >
+                  <Printer className="w-4 h-4" /> Print History
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setHistoryModalOpen(false)}
+                  className="text-slate-400 hover:text-slate-600 p-1"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
 
-      {/* Date Wise Filter Bar */}
-      <div className="bg-slate-50 border border-slate-200/80 rounded-xl p-3 mb-4 grid grid-cols-1 sm:grid-cols-4 gap-3 items-end">
-        <div>
-          <label className="block text-[11px] font-semibold text-slate-600 mb-1">From Date</label>
-          <input
-            type="date"
-            value={historyFromDate}
-            onChange={e => setHistoryFromDate(e.target.value)}
-            className="w-full border border-slate-200 bg-white px-2.5 py-1.5 rounded-lg text-xs outline-none focus:border-indigo-500"
-          />
+            {/* Date Wise Filter Bar */}
+            <div className="bg-slate-50 border border-slate-200/80 rounded-xl p-3 mb-4 grid grid-cols-1 sm:grid-cols-4 gap-3 items-end">
+              <div>
+                <label className="block text-[11px] font-semibold text-slate-600 mb-1">From Date</label>
+                <input
+                  type="date"
+                  value={historyFromDate}
+                  onChange={e => setHistoryFromDate(e.target.value)}
+                  className="w-full border border-slate-200 bg-white px-2.5 py-1.5 rounded-lg text-xs outline-none focus:border-indigo-500"
+                />
+              </div>
+              <div>
+                <label className="block text-[11px] font-semibold text-slate-600 mb-1">To Date</label>
+                <input
+                  type="date"
+                  value={historyToDate}
+                  onChange={e => setHistoryToDate(e.target.value)}
+                  className="w-full border border-slate-200 bg-white px-2.5 py-1.5 rounded-lg text-xs outline-none focus:border-indigo-500"
+                />
+              </div>
+              <div className="sm:col-span-2 flex items-center justify-between gap-2 text-xs text-slate-600 px-1">
+                <span>
+                  Showing <strong>{filteredReturnHistory.length}</strong> records ({returnPeriodText})
+                </span>
+                {(historyFromDate || historyToDate) && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setHistoryFromDate('');
+                      setHistoryToDate('');
+                    }}
+                    className="text-indigo-600 font-semibold hover:underline"
+                  >
+                    Clear Dates
+                  </button>
+                )}
+              </div>
+            </div>
+
+            <div className="overflow-y-auto flex-1">
+              {loadingHistory ? (
+                <p className="text-center py-8 text-sm text-slate-500">Loading return history...</p>
+              ) : filteredReturnHistory.length === 0 ? (
+                <p className="text-center py-8 text-sm text-slate-400">
+                  No return records found for selected date range.
+                </p>
+              ) : (
+                <table className="w-full text-left border-collapse text-sm">
+                  <thead>
+                    <tr className="bg-slate-50 border-b text-xs font-semibold text-slate-500 uppercase">
+                      <th className="p-3">Return #</th>
+                      <th className="p-3">Product</th>
+                      <th className="p-3">Type</th>
+                      <th className="p-3 text-right">Qty</th>
+                      <th className="p-3">Reason</th>
+                      <th className="p-3">Date</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {filteredReturnHistory.map(item => (
+                      <tr key={item._id} className="hover:bg-slate-50">
+                        <td className="p-3 font-mono text-xs font-semibold text-slate-700">
+                          {item.returnNumber}
+                        </td>
+                        <td className="p-3">
+                          <p className="font-medium text-slate-800">
+                            {item.product?.name || 'Deleted Product'}
+                          </p>
+                          <span className="text-xs text-slate-400">{item.product?.sku}</span>
+                        </td>
+                        <td className="p-3">
+                          {item.returnType === 'SALES_RETURN' ? (
+                            <span className="bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded-md text-xs font-semibold">
+                              Sales Return (+)
+                            </span>
+                          ) : (
+                            <span className="bg-amber-50 text-amber-700 px-2 py-0.5 rounded-md text-xs font-semibold">
+                              Purchase Return (-)
+                            </span>
+                          )}
+                        </td>
+                        <td className="p-3 text-right font-bold text-slate-800">{item.quantity}</td>
+                        <td className="p-3 text-xs text-slate-600">{item.reason || '-'}</td>
+                        <td className="p-3 text-xs text-slate-500">
+                          {item.createdAt ? new Date(item.createdAt).toLocaleDateString() : '-'}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
+          </div>
         </div>
-        <div>
-          <label className="block text-[11px] font-semibold text-slate-600 mb-1">To Date</label>
-          <input
-            type="date"
-            value={historyToDate}
-            onChange={e => setHistoryToDate(e.target.value)}
-            className="w-full border border-slate-200 bg-white px-2.5 py-1.5 rounded-lg text-xs outline-none focus:border-indigo-500"
-          />
-        </div>
-        <div className="sm:col-span-2 flex items-center justify-between gap-2 text-xs text-slate-600 px-1">
-          <span>
-            Showing <strong>{filteredReturnHistory.length}</strong> records ({returnPeriodText})
-          </span>
-          {(historyFromDate || historyToDate) && (
-            <button
-              type="button"
-              onClick={() => {
-                setHistoryFromDate('');
-                setHistoryToDate('');
-              }}
-              className="text-indigo-600 font-semibold hover:underline"
-            >
-              Clear Dates
-            </button>
-          )}
-        </div>
-      </div>
-
-      <div className="overflow-y-auto flex-1">
-        {loadingHistory ? (
-          <p className="text-center py-8 text-sm text-slate-500">Loading return history...</p>
-        ) : filteredReturnHistory.length === 0 ? (
-          <p className="text-center py-8 text-sm text-slate-400">
-            No return records found for selected date range.
-          </p>
-        ) : (
-          <table className="w-full text-left border-collapse text-sm">
-            <thead>
-              <tr className="bg-slate-50 border-b text-xs font-semibold text-slate-500 uppercase">
-                <th className="p-3">Return #</th>
-                <th className="p-3">Product</th>
-                <th className="p-3">Type</th>
-                <th className="p-3 text-right">Qty</th>
-                <th className="p-3">Reason</th>
-                <th className="p-3">Date</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {filteredReturnHistory.map(item => (
-                <tr key={item._id} className="hover:bg-slate-50">
-                  <td className="p-3 font-mono text-xs font-semibold text-slate-700">
-                    {item.returnNumber}
-                  </td>
-                  <td className="p-3">
-                    <p className="font-medium text-slate-800">
-                      {item.product?.name || 'Deleted Product'}
-                    </p>
-                    <span className="text-xs text-slate-400">{item.product?.sku}</span>
-                  </td>
-                  <td className="p-3">
-                    {item.returnType === 'SALES_RETURN' ? (
-                      <span className="bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded-md text-xs font-semibold">
-                        Sales Return (+)
-                      </span>
-                    ) : (
-                      <span className="bg-amber-50 text-amber-700 px-2 py-0.5 rounded-md text-xs font-semibold">
-                        Purchase Return (-)
-                      </span>
-                    )}
-                  </td>
-                  <td className="p-3 text-right font-bold text-slate-800">{item.quantity}</td>
-                  <td className="p-3 text-xs text-slate-600">{item.reason || '-'}</td>
-                  <td className="p-3 text-xs text-slate-500">
-                    {item.createdAt ? new Date(item.createdAt).toLocaleDateString() : '-'}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-      </div>
-    </div>
-  </div>
-)}
-
-      
-
-
+      )}
     </div>
   );
 }

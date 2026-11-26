@@ -354,6 +354,7 @@ import {
   getAccountTransactions
 } from './services/api';
 import ChangePasswordModal from './components/ChangePasswordModal';
+import BarcodeModule from './components/BarcodeModule';
 
 const normalizeArray = (res, key) => {
   const payload = res?.data;
@@ -643,6 +644,13 @@ export default function App() {
               currentUser={user}
               reloadData={loadData}
               user={user}
+            />
+          )}
+
+          {activeTab === 'barcode' && (
+            <BarcodeModule 
+              products={products} 
+              settings={erpSettings} 
             />
           )}
         </main>

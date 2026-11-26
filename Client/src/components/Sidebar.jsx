@@ -19,7 +19,8 @@ import {
   CalendarClock,
   FileSpreadsheet,
   Settings as SettingsIcon,
-  User
+  User,
+  Barcode
 } from 'lucide-react';
 import { DEFAULT_ERP_SETTINGS } from './Settings';
 
@@ -105,6 +106,11 @@ export default function Sidebar({
   ];
 
   const bottomMenuItems = [
+    { id: 'barcode', 
+      label: 'Barcode', 
+      icon: Barcode, 
+      show: true 
+    },
     {
       id: 'reports',
       label: 'All Reports',
