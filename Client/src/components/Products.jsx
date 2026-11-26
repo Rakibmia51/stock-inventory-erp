@@ -1491,9 +1491,1590 @@
 // }
 
 
+// import { useState, useEffect } from 'react';
+// import {
+//   Plus,
+//   Trash2,
+//   Search,
+//   X,
+//   AlertTriangle,
+//   CheckCircle2,
+//   RotateCcw,
+//   History,
+//   Printer,
+//   Download,
+//   ChevronLeft,
+//   ChevronRight,
+//   Sparkles,
+//   Camera
+// } from 'lucide-react';
+// import {
+//   addProduct,
+//   deleteProduct,
+//   createReturn,
+//   getReturns
+// } from '../services/api';
+// import { DEFAULT_ERP_SETTINGS } from './Settings';
+// import CameraScannerModal from './CameraScannerModal';
+
+// const getEffectiveUser = (propUser) => {
+//   if (propUser) return propUser;
+//   try {
+//     const raw =
+//       localStorage.getItem('nexusUser') ||
+//       localStorage.getItem('user') ||
+//       localStorage.getItem('authUser');
+//     return raw ? JSON.parse(raw) : null;
+//   } catch {
+//     return null;
+//   }
+// };
+
+// const generateUniqueSku = (existingProducts = [], prefix = 'PRD') => {
+//   const list = Array.isArray(existingProducts) ? existingProducts : [];
+//   const used = new Set(
+//     list
+//       .flatMap(p => [p?.sku, p?.barcode])
+//       .map(v => String(v || '').trim().toUpperCase())
+//       .filter(Boolean)
+//   );
+
+//   const baseNum = list.length + 1001;
+//   let candidate = `${prefix}-${baseNum}`;
+//   let counter = 0;
+
+//   while (used.has(candidate.toUpperCase())) {
+//     counter += 1;
+//     const rand = Math.floor(100 + Math.random() * 900);
+//     candidate = `${prefix}-${baseNum + counter}-${rand}`;
+//   }
+
+//   return candidate;
+// };
+
+// export default function Products({ products = [], suppliers, reloadData, settings, user }) {
+//   const activeSettings = {
+//     ...DEFAULT_ERP_SETTINGS,
+//     ...(settings || {})
+//   };
+//   const currency = activeSettings.currencySymbol || '৳';
+//   const companyTitle = (activeSettings.companyName || 'NEXUS ERP').trim();
+
+//   const productList = Array.isArray(products) ? products : [];
+
+//   const [isModalOpen, setIsModalOpen] = useState(false);
+//   const [searchTerm, setSearchTerm] = useState('');
+//   const [categoryFilter, setCategoryFilter] = useState('ALL');
+//   const [statusFilter, setStatusFilter] = useState('ALL'); // ALL | LOW | IN_STOCK
+//   const [loading, setLoading] = useState(false);
+
+//   // Camera Scanner State ('search' | 'form')
+//   const [showCameraScanner, setShowCameraScanner] = useState(false);
+//   const [scanTarget, setScanTarget] = useState('search');
+
+//   // Pagination State
+//   const [currentPage, setCurrentPage] = useState(1);
+//   const itemsPerPage = 8;
+
+//   // Add Product Form State (buyPrice & sellPrice)
+//   const [form, setForm] = useState({
+//     name: '',
+//     sku: '',
+//     category: '',
+//     openingStock: '',
+//     buyPrice: '',
+//     sellPrice: '',
+//     minStockLevel: 5
+//   });
+
+//   // Return Modal State
+//   const [returnModal, setReturnModal] = useState({ open: false, product: null });
+//   const [returnForm, setReturnForm] = useState({
+//     returnType: 'SALES_RETURN',
+//     amount: '',
+//     reason: ''
+//   });
+
+//   // Return History Modal State
+//   const [historyModalOpen, setHistoryModalOpen] = useState(false);
+//   const [returnHistory, setReturnHistory] = useState([]);
+//   const [loadingHistory, setLoadingHistory] = useState(false);
+
+//   const [historyFromDate, setHistoryFromDate] = useState('');
+//   const [historyToDate, setHistoryToDate] = useState('');
+
+//   const currentUser = getEffectiveUser(user);
+//   const isAdmin =
+//     (currentUser?.userType || '').toLowerCase() === 'admin' ||
+//     (currentUser?.role || '').toLowerCase() === 'admin';
+//   const canDeleteProduct = isAdmin || Boolean(currentUser?.permissions?.products);
+
+//   // Stock Ledger Metrics Helper
+//   const getStockMetrics = (p) => {
+//     const opening = Number(p.openingStock ?? 0);
+//     const purchased = Number(p.purchasedQty ?? 0);
+//     const sold = Number(p.soldQty ?? 0);
+//     const returned = Number(p.returnedQty ?? 0);
+//     const current = Math.max(
+//       0,
+//       Number(p.quantity ?? opening + purchased - sold + returned)
+//     );
+//     const isLow = current <= Number(p.minStockLevel ?? 5);
+//     return { opening, purchased, sold, returned, current, isLow };
+//   };
+
+//   // Unique Categories
+//   const categories = Array.from(
+//     new Set(
+//       productList
+//         .map(p => (p.category || '').trim())
+//         .filter(Boolean)
+//     )
+//   );
+
+//   // Filter Logic (Search + Category + Stock Status)
+//   const filteredProducts = productList.filter(p => {
+//     const q = searchTerm.trim().toLowerCase();
+//     const matchesSearch =
+//       !q ||
+//       (p.name || '').toLowerCase().includes(q) ||
+//       (p.sku || '').toLowerCase().includes(q) ||
+//       (p.barcode || '').toLowerCase().includes(q) ||
+//       (p.category || '').toLowerCase().includes(q);
+
+//     const matchesCategory =
+//       categoryFilter === 'ALL' ||
+//       (p.category || '').toLowerCase() === categoryFilter.toLowerCase();
+
+//     const { isLow } = getStockMetrics(p);
+//     const matchesStatus =
+//       statusFilter === 'ALL' ||
+//       (statusFilter === 'LOW' && isLow) ||
+//       (statusFilter === 'IN_STOCK' && !isLow);
+
+//     return matchesSearch && matchesCategory && matchesStatus;
+//   });
+
+//   // Total Stock Summary Value
+//   const stockSummary = filteredProducts.reduce(
+//     (acc, p) => {
+//       const { opening, purchased, sold, returned, current } = getStockMetrics(p);
+//       const buyVal = Number(p.buyPrice ?? 0);
+//       const sellVal = Number(p.sellPrice ?? p.price ?? 0);
+
+//       acc.totalOpening += opening;
+//       acc.totalPurchased += purchased;
+//       acc.totalSold += sold;
+//       acc.totalReturned += returned;
+//       acc.totalUnits += current;
+//       acc.totalBuyValue += current * buyVal;
+//       acc.totalSellValue += current * sellVal;
+//       return acc;
+//     },
+//     {
+//       totalOpening: 0,
+//       totalPurchased: 0,
+//       totalSold: 0,
+//       totalReturned: 0,
+//       totalUnits: 0,
+//       totalBuyValue: 0,
+//       totalSellValue: 0
+//     }
+//   );
+
+//   const expectedProfit = stockSummary.totalSellValue - stockSummary.totalBuyValue;
+
+//   useEffect(() => {
+//     setCurrentPage(1);
+//   }, [searchTerm, categoryFilter, statusFilter, productList.length]);
+
+//   const totalPages = Math.max(1, Math.ceil(filteredProducts.length / itemsPerPage));
+//   const safeCurrentPage = Math.min(currentPage, totalPages);
+//   const startIndex = (safeCurrentPage - 1) * itemsPerPage;
+//   const paginatedProducts = filteredProducts.slice(startIndex, startIndex + itemsPerPage);
+
+//   const openAddProductModal = (prefilledSku = '') => {
+//     const cleanSku = String(prefilledSku || '').trim();
+//     setForm({
+//       name: '',
+//       sku: cleanSku || generateUniqueSku(productList, 'PRD'),
+//       category: '',
+//       openingStock: '',
+//       buyPrice: '',
+//       sellPrice: '',
+//       minStockLevel: 5
+//     });
+//     setIsModalOpen(true);
+//   };
+
+//   // ক্যামেরা বারকোড স্ক্যান হ্যান্ডলার
+//   const handleCameraScanSuccess = (scannedCode) => {
+//     const cleanCode = String(scannedCode || '').trim();
+//     if (!cleanCode) return;
+
+//     if (scanTarget === 'form' && isModalOpen) {
+//       setForm(prev => ({ ...prev, sku: cleanCode }));
+//       return;
+//     }
+
+//     const normalized = cleanCode.toLowerCase();
+//     const matched = productList.find(p => {
+//       const sku = String(p?.sku || '').trim().toLowerCase();
+//       const barcode = String(p?.barcode || '').trim().toLowerCase();
+//       return sku === normalized || barcode === normalized;
+//     });
+
+//     if (matched) {
+//       setSearchTerm(cleanCode);
+//       setCategoryFilter('ALL');
+//       setStatusFilter('ALL');
+//       setCurrentPage(1);
+//     } else {
+//       openAddProductModal(cleanCode);
+//     }
+//   };
+
+//   // ১. নতুন প্রোডাক্ট সেভ করা
+//   const handleSubmit = async (e) => {
+//     e.preventDefault();
+//     setLoading(true);
+//     try {
+//       const openingNum = Math.max(0, Number(form.openingStock) || 0);
+//       const buyNum = Math.max(0, Number(form.buyPrice) || 0);
+//       const sellNum = Math.max(0, Number(form.sellPrice) || 0);
+//       const cleanSku =
+//         String(form.sku || '').trim() || generateUniqueSku(productList, 'PRD');
+
+//       await addProduct({
+//         name: String(form.name || '').trim(),
+//         sku: cleanSku,
+//         barcode: cleanSku,
+//         category: String(form.category || '').trim() || 'General',
+//         openingStock: openingNum,
+//         quantity: openingNum,
+//         buyPrice: buyNum,
+//         sellPrice: sellNum,
+//         price: sellNum,
+//         minStockLevel: Math.max(0, Number(form.minStockLevel) || 5)
+//       });
+
+//       setForm({
+//         name: '',
+//         sku: '',
+//         category: '',
+//         openingStock: '',
+//         buyPrice: '',
+//         sellPrice: '',
+//         minStockLevel: 5
+//       });
+//       setIsModalOpen(false);
+//       reloadData?.();
+//     } catch (err) {
+//       alert(err.response?.data?.message || 'Error adding product');
+//     } finally {
+//       setLoading(false);
+//     }
+//   };
+
+//   // ২. Return সাবমিট করা
+//   const handleReturnSubmit = async (e) => {
+//     e.preventDefault();
+//     if (!returnModal.product) return;
+//     setLoading(true);
+//     try {
+//       await createReturn({
+//         productId: returnModal.product._id,
+//         returnType: returnForm.returnType,
+//         amount: Number(returnForm.amount),
+//         reason: returnForm.reason
+//       });
+//       setReturnModal({ open: false, product: null });
+//       setReturnForm({ returnType: 'SALES_RETURN', amount: '', reason: '' });
+//       reloadData?.();
+//     } catch (err) {
+//       alert(err.response?.data?.message || 'Error processing return');
+//     } finally {
+//       setLoading(false);
+//     }
+//   };
+
+//   // ৩. Return History লোড করা
+//   const handleOpenHistory = async () => {
+//     setHistoryModalOpen(true);
+//     setLoadingHistory(true);
+//     try {
+//       const { data } = await getReturns();
+//       setReturnHistory(Array.isArray(data) ? data : []);
+//     } catch (err) {
+//       console.error('Error fetching return history:', err);
+//     } finally {
+//       setLoadingHistory(false);
+//     }
+//   };
+
+//   // ৪. প্রোডাক্ট ডিলিট করা
+//   const handleDelete = async (id) => {
+//     if (!confirm('আপনি কি নিশ্চিত এটি ডিলিট করতে চান?')) return;
+//     try {
+//       await deleteProduct(id);
+//       reloadData?.();
+//     } catch (err) {
+//       alert(err.response?.data?.message || 'Error deleting product');
+//     }
+//   };
+
+//   // ৫. Excel (.csv with UTF-8 BOM) Download + Total Stock Summary
+//   const handleDownloadExcel = () => {
+//     const headers = [
+//       'Product Name',
+//       'SKU',
+//       'Category',
+//       'Buy Price',
+//       'Sell Price',
+//       'Opening Stock',
+//       'Purchase (IN)',
+//       'Sell (OUT)',
+//       'Return',
+//       'Current Stock',
+//       'Stock Buy Value',
+//       'Stock Sell Value',
+//       'Status'
+//     ];
+
+//     const escapeCsv = (val) => {
+//       const str = String(val ?? '');
+//       return `"${str.replace(/"/g, '""')}"`;
+//     };
+
+//     const rows = filteredProducts.map(p => {
+//       const { opening, purchased, sold, returned, current, isLow } = getStockMetrics(p);
+//       const buyVal = Number(p.buyPrice ?? 0);
+//       const sellVal = Number(p.sellPrice ?? p.price ?? 0);
+//       return [
+//         escapeCsv(p.name),
+//         escapeCsv(p.sku),
+//         escapeCsv(p.category),
+//         escapeCsv(buyVal),
+//         escapeCsv(sellVal),
+//         escapeCsv(opening),
+//         escapeCsv(purchased),
+//         escapeCsv(sold),
+//         escapeCsv(returned),
+//         escapeCsv(current),
+//         escapeCsv(current * buyVal),
+//         escapeCsv(current * sellVal),
+//         escapeCsv(isLow ? 'Low Stock' : 'In Stock')
+//       ].join(',');
+//     });
+
+//     const totalRow = [
+//       escapeCsv('TOTAL SUMMARY'),
+//       escapeCsv(''),
+//       escapeCsv(`${filteredProducts.length} Items`),
+//       escapeCsv(''),
+//       escapeCsv(''),
+//       escapeCsv(stockSummary.totalOpening),
+//       escapeCsv(stockSummary.totalPurchased),
+//       escapeCsv(stockSummary.totalSold),
+//       escapeCsv(stockSummary.totalReturned),
+//       escapeCsv(stockSummary.totalUnits),
+//       escapeCsv(stockSummary.totalBuyValue),
+//       escapeCsv(stockSummary.totalSellValue),
+//       escapeCsv(`Profit: ${expectedProfit}`)
+//     ].join(',');
+
+//     const csvContent =
+//       '\uFEFF' + [headers.map(escapeCsv).join(','), ...rows, totalRow].join('\n');
+//     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+//     const url = URL.createObjectURL(blob);
+//     const link = document.createElement('a');
+//     const dateStr = new Date().toISOString().slice(0, 10);
+//     link.href = url;
+//     link.setAttribute('download', `Stock_Ledger_${dateStr}.csv`);
+//     document.body.appendChild(link);
+//     link.click();
+//     document.body.removeChild(link);
+//     URL.revokeObjectURL(url);
+//   };
+
+//   // ৬. Print Filtered / All Products with Total Stock Summary
+//   const handlePrintProducts = () => {
+//     const printWindow = window.open('', '_blank', 'height=750,width=1050');
+//     if (!printWindow) return;
+
+//     const filterSummary = [
+//       categoryFilter !== 'ALL' ? `Category: ${categoryFilter}` : 'All Categories',
+//       statusFilter === 'LOW'
+//         ? 'Status: Low Stock'
+//         : statusFilter === 'IN_STOCK'
+//         ? 'Status: In Stock'
+//         : 'All Status',
+//       searchTerm.trim() ? `Search: "${searchTerm.trim()}"` : ''
+//     ]
+//       .filter(Boolean)
+//       .join(' | ');
+
+//     const rowsHtml = filteredProducts
+//       .map((p, idx) => {
+//         const { opening, purchased, sold, returned, current, isLow } = getStockMetrics(p);
+//         const buyVal = Number(p.buyPrice ?? 0);
+//         const sellVal = Number(p.sellPrice ?? p.price ?? 0);
+//         return `
+//           <tr>
+//             <td>${idx + 1}</td>
+//             <td><strong>${p.name}</strong><br/><small>${p.sku || ''}</small></td>
+//             <td>${p.category || '-'}</td>
+//             <td class="text-right">${currency}${buyVal.toLocaleString()}</td>
+//             <td class="text-right">${currency}${sellVal.toLocaleString()}</td>
+//             <td class="text-right">${opening}</td>
+//             <td class="text-right">+${purchased}</td>
+//             <td class="text-right">-${sold}</td>
+//             <td class="text-right">${returned >= 0 ? `+${returned}` : returned}</td>
+//             <td class="text-right"><strong>${current}</strong></td>
+//             <td class="text-right">${currency}${(current * buyVal).toLocaleString()}</td>
+//             <td class="text-right">${currency}${(current * sellVal).toLocaleString()}</td>
+//             <td>${isLow ? 'Low Stock' : 'In Stock'}</td>
+//           </tr>
+//         `;
+//       })
+//       .join('');
+
+//     const metaParts = [
+//       activeSettings.address,
+//       activeSettings.phone && `Phone: ${activeSettings.phone}`,
+//       activeSettings.email && `Email: ${activeSettings.email}`,
+//       activeSettings.taxId && `BIN/VAT: ${activeSettings.taxId}`
+//     ].filter(Boolean);
+
+//     const logoHtml =
+//       activeSettings.logoUrl && activeSettings.logoUrl.trim()
+//         ? `<img src="${activeSettings.logoUrl}" alt="${companyTitle}" style="width:44px;height:44px;object-fit:contain;border:1px solid #e2e8f0;border-radius:8px;padding:3px;" />`
+//         : '';
+
+//     const signaturesHtml =
+//       activeSettings.showSignatureOnPrint !== false
+//         ? `
+//           <div class="signatures">
+//             <div class="sig-box">Prepared By</div>
+//             <div class="sig-box">Checked By</div>
+//             <div class="sig-box">Authorized Signature (${companyTitle})</div>
+//           </div>
+//         `
+//         : '';
+
+//     const footerHtml = activeSettings.invoiceFooter
+//       ? `<div class="footer-note">${activeSettings.invoiceFooter}</div>`
+//       : '';
+
+//     printWindow.document.write(`
+//       <html>
+//         <head>
+//           <title>Inventory Stock Ledger Report - ${companyTitle}</title>
+//           <style>
+//             body { font-family: Arial, sans-serif; padding: 24px; color: #0f172a; }
+//             .header { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid #e2e8f0; padding-bottom: 12px; margin-bottom: 14px; gap: 12px; }
+//             .brand-row { display: flex; align-items: flex-start; gap: 10px; }
+//             h2 { margin: 0 0 4px 0; font-size: 20px; }
+//             p { margin: 2px 0; font-size: 12px; color: #475569; }
+//             .summary-grid { display: flex; justify-content: space-between; gap: 10px; margin-bottom: 16px; }
+//             .summary-box { flex: 1; border: 1px solid #cbd5e1; border-radius: 6px; padding: 8px 10px; background: #f8fafc; font-size: 12px; }
+//             .summary-box strong { display: block; font-size: 14px; margin-top: 2px; color: #0f172a; }
+//             table { width: 100%; border-collapse: collapse; font-size: 11.5px; }
+//             th, td { border-bottom: 1px solid #cbd5e1; padding: 6px 5px; text-align: left; }
+//             th { background: #f1f5f9; font-weight: bold; }
+//             tfoot td { background: #f8fafc; font-weight: bold; border-top: 2px solid #94a3b8; }
+//             .text-right { text-align: right; }
+//             .signatures { display: flex; justify-content: space-between; margin-top: 50px; }
+//             .sig-box { width: 190px; border-top: 1px solid #64748b; text-align: center; padding-top: 5px; font-size: 11px; color: #475569; }
+//             .footer-note { margin-top: 24px; padding-top: 10px; border-top: 1px dashed #cbd5e1; text-align: center; font-size: 11px; color: #64748b; }
+//           </style>
+//         </head>
+//         <body>
+//           <div class="header">
+//             <div class="brand-row">
+//               ${logoHtml}
+//               <div>
+//                 <h2>${companyTitle} — INVENTORY STOCK LEDGER</h2>
+//                 ${metaParts.length ? `<p>${metaParts.join(' • ')}</p>` : ''}
+//                 <p>${filterSummary} • Total Products: ${filteredProducts.length}</p>
+//               </div>
+//             </div>
+//             <div style="text-align:right">
+//               <p><strong>Date:</strong> ${new Date().toLocaleDateString()}</p>
+//             </div>
+//           </div>
+
+//           <div class="summary-grid">
+//             <div class="summary-box">Total Stock Qty<strong>${stockSummary.totalUnits.toLocaleString()} pcs</strong></div>
+//             <div class="summary-box">Total Buy Value<strong>${currency}${stockSummary.totalBuyValue.toLocaleString()}</strong></div>
+//             <div class="summary-box">Total Sell Value<strong>${currency}${stockSummary.totalSellValue.toLocaleString()}</strong></div>
+//             <div class="summary-box">Expected Profit<strong>${expectedProfit >= 0 ? '+' : ''}${currency}${expectedProfit.toLocaleString()}</strong></div>
+//           </div>
+
+//           <table>
+//             <thead>
+//               <tr>
+//                 <th>#</th>
+//                 <th>Product & SKU</th>
+//                 <th>Category</th>
+//                 <th class="text-right">Buy</th>
+//                 <th class="text-right">Sell</th>
+//                 <th class="text-right">Open</th>
+//                 <th class="text-right">IN</th>
+//                 <th class="text-right">OUT</th>
+//                 <th class="text-right">Ret</th>
+//                 <th class="text-right">Stock</th>
+//                 <th class="text-right">Buy Val</th>
+//                 <th class="text-right">Sell Val</th>
+//                 <th>Status</th>
+//               </tr>
+//             </thead>
+//             <tbody>
+//               ${
+//                 rowsHtml ||
+//                 `<tr><td colspan="13" style="text-align:center;padding:16px;">No products to display.</td></tr>`
+//               }
+//             </tbody>
+//             <tfoot>
+//               <tr>
+//                 <td colspan="5">TOTAL</td>
+//                 <td class="text-right">${stockSummary.totalOpening}</td>
+//                 <td class="text-right">+${stockSummary.totalPurchased}</td>
+//                 <td class="text-right">-${stockSummary.totalSold}</td>
+//                 <td class="text-right">${stockSummary.totalReturned}</td>
+//                 <td class="text-right">${stockSummary.totalUnits}</td>
+//                 <td class="text-right">${currency}${stockSummary.totalBuyValue.toLocaleString()}</td>
+//                 <td class="text-right">${currency}${stockSummary.totalSellValue.toLocaleString()}</td>
+//                 <td></td>
+//               </tr>
+//             </tfoot>
+//           </table>
+
+//           ${signaturesHtml}
+//           ${footerHtml}
+//         </body>
+//       </html>
+//     `);
+
+//     printWindow.document.close();
+//     printWindow.focus();
+//     setTimeout(() => {
+//       printWindow.print();
+//       printWindow.close();
+//     }, 400);
+//   };
+
+//   const parseDateBound = (dateStr, endOfDay = false) => {
+//     if (!dateStr) return null;
+//     const [y, m, d] = dateStr.split('-').map(Number);
+//     if (!y || !m || !d) return null;
+//     return endOfDay
+//       ? new Date(y, m - 1, d, 23, 59, 59, 999)
+//       : new Date(y, m - 1, d, 0, 0, 0, 0);
+//   };
+
+//   const filteredReturnHistory = (Array.isArray(returnHistory) ? returnHistory : []).filter(item => {
+//     const fromBound = parseDateBound(historyFromDate, false);
+//     const toBound = parseDateBound(historyToDate, true);
+//     if (!fromBound && !toBound) return true;
+
+//     const rawDate = item?.createdAt || item?.returnDate || item?.date;
+//     if (!rawDate) return false;
+//     const dt = new Date(rawDate);
+//     if (Number.isNaN(dt.getTime())) return false;
+
+//     if (fromBound && dt < fromBound) return false;
+//     if (toBound && dt > toBound) return false;
+//     return true;
+//   });
+
+//   const salesReturnQty = filteredReturnHistory
+//     .filter(r => r.returnType === 'SALES_RETURN')
+//     .reduce((sum, r) => sum + Number(r.quantity || 0), 0);
+
+//   const purchaseReturnQty = filteredReturnHistory
+//     .filter(r => r.returnType !== 'SALES_RETURN')
+//     .reduce((sum, r) => sum + Number(r.quantity || 0), 0);
+
+//   const returnPeriodText =
+//     historyFromDate && historyToDate
+//       ? `${historyFromDate} to ${historyToDate}`
+//       : historyFromDate
+//       ? `From ${historyFromDate}`
+//       : historyToDate
+//       ? `Up to ${historyToDate}`
+//       : 'All Dates';
+
+//   const handlePrintReturnHistory = () => {
+//     const printWindow = window.open('', '_blank', 'height=750,width=980');
+//     if (!printWindow) return;
+
+//     const rowsHtml = filteredReturnHistory
+//       .map((item, idx) => {
+//         const isSalesRet = item.returnType === 'SALES_RETURN';
+//         const typeLabel = isSalesRet ? 'Sales Return (+)' : 'Purchase Return (-)';
+//         const dateFormatted = item.createdAt
+//           ? new Date(item.createdAt).toLocaleDateString()
+//           : '-';
+
+//         return `
+//           <tr>
+//             <td>${idx + 1}</td>
+//             <td class="mono"><strong>${item.returnNumber || '-'}</strong></td>
+//             <td>
+//               <strong>${item.product?.name || 'Deleted Product'}</strong>
+//               ${item.product?.sku ? `<br/><small>${item.product.sku}</small>` : ''}
+//             </td>
+//             <td>${typeLabel}</td>
+//             <td class="text-right"><strong>${Number(item.quantity || 0).toLocaleString()}</strong></td>
+//             <td>${item.reason || '-'}</td>
+//             <td>${dateFormatted}</td>
+//           </tr>
+//         `;
+//       })
+//       .join('');
+
+//     const metaParts = [
+//       activeSettings.address,
+//       activeSettings.phone && `Phone: ${activeSettings.phone}`,
+//       activeSettings.email && `Email: ${activeSettings.email}`,
+//       activeSettings.taxId && `BIN/VAT: ${activeSettings.taxId}`
+//     ].filter(Boolean);
+
+//     const logoHtml =
+//       activeSettings.logoUrl && activeSettings.logoUrl.trim()
+//         ? `<img src="${activeSettings.logoUrl}" alt="${companyTitle}" style="width:44px;height:44px;object-fit:contain;border:1px solid #e2e8f0;border-radius:8px;padding:3px;" />`
+//         : '';
+
+//     const signaturesHtml =
+//       activeSettings.showSignatureOnPrint !== false
+//         ? `
+//           <div class="signatures">
+//             <div class="sig-box">Prepared By</div>
+//             <div class="sig-box">Store / Checked By</div>
+//             <div class="sig-box">Authorized Signature (${companyTitle})</div>
+//           </div>
+//         `
+//         : '';
+
+//     const footerHtml = activeSettings.invoiceFooter
+//       ? `<div class="footer-note">${activeSettings.invoiceFooter}</div>`
+//       : '';
+
+//     printWindow.document.write(`
+//       <html>
+//         <head>
+//           <title>Stock Return History - ${companyTitle}</title>
+//           <style>
+//             body { font-family: Arial, sans-serif; padding: 24px; color: #0f172a; }
+//             .header { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid #e2e8f0; padding-bottom: 12px; margin-bottom: 14px; gap: 12px; }
+//             .brand-row { display: flex; align-items: flex-start; gap: 10px; }
+//             h2 { margin: 0 0 4px 0; font-size: 19px; }
+//             p { margin: 2px 0; font-size: 12px; color: #475569; }
+//             .summary-bar { display: flex; justify-content: space-between; gap: 10px; margin-bottom: 14px; }
+//             .summary-card { flex: 1; border: 1px solid #cbd5e1; border-radius: 6px; padding: 8px 10px; background: #f8fafc; font-size: 11.5px; }
+//             .summary-card strong { display: block; font-size: 13px; margin-top: 2px; color: #0f172a; }
+//             table { width: 100%; border-collapse: collapse; font-size: 12px; }
+//             th, td { border-bottom: 1px solid #cbd5e1; padding: 7px 6px; text-align: left; }
+//             th { background: #f1f5f9; font-weight: bold; }
+//             .mono { font-family: monospace; }
+//             .text-right { text-align: right; }
+//             .signatures { display: flex; justify-content: space-between; margin-top: 50px; }
+//             .sig-box { width: 190px; border-top: 1px solid #64748b; text-align: center; padding-top: 5px; font-size: 11px; color: #475569; }
+//             .footer-note { margin-top: 24px; padding-top: 10px; border-top: 1px dashed #cbd5e1; text-align: center; font-size: 11px; color: #64748b; }
+//           </style>
+//         </head>
+//         <body>
+//           <div class="header">
+//             <div class="brand-row">
+//               ${logoHtml}
+//               <div>
+//                 <h2>${companyTitle} — STOCK RETURN HISTORY</h2>
+//                 ${metaParts.length ? `<p>${metaParts.join(' • ')}</p>` : ''}
+//                 <p><strong>Date Range:</strong> ${returnPeriodText} • <strong>Records:</strong> ${filteredReturnHistory.length}</p>
+//               </div>
+//             </div>
+//             <div style="text-align:right">
+//               <p><strong>Printed:</strong> ${new Date().toLocaleDateString()}</p>
+//             </div>
+//           </div>
+
+//           <div class="summary-bar">
+//             <div class="summary-card">Total Returns<strong>${filteredReturnHistory.length} entries</strong></div>
+//             <div class="summary-card">Sales Return Qty (+)<strong>${salesReturnQty.toLocaleString()} pcs</strong></div>
+//             <div class="summary-card">Purchase Return Qty (-)<strong>${purchaseReturnQty.toLocaleString()} pcs</strong></div>
+//           </div>
+
+//           <table>
+//             <thead>
+//               <tr>
+//                 <th>#</th>
+//                 <th>Return #</th>
+//                 <th>Product</th>
+//                 <th>Type</th>
+//                 <th class="text-right">Qty</th>
+//                 <th>Reason</th>
+//                 <th>Date</th>
+//               </tr>
+//             </thead>
+//             <tbody>
+//               ${
+//                 rowsHtml ||
+//                 `<tr><td colspan="7" style="text-align:center;padding:16px;">No return records found for selected dates.</td></tr>`
+//               }
+//             </tbody>
+//           </table>
+
+//           ${signaturesHtml}
+//           ${footerHtml}
+//         </body>
+//       </html>
+//     `);
+
+//     printWindow.document.close();
+//     printWindow.focus();
+//     setTimeout(() => {
+//       printWindow.print();
+//       printWindow.close();
+//     }, 400);
+//   };
+
+//   return (
+//     <div className="space-y-5 sm:space-y-6">
+//       {/* Header & Action Bar */}
+//       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+//         <div>
+//           <h2 className="text-xl sm:text-2xl font-bold text-slate-800">Inventory Stock Ledger</h2>
+//           <p className="text-xs sm:text-sm text-slate-500">
+//             Track buy/sell prices, stock summary values, ledger movements, and returns.
+//           </p>
+//         </div>
+
+//         <div className="flex flex-wrap items-center gap-2">
+//           <button
+//             type="button"
+//             onClick={handleDownloadExcel}
+//             className="bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 px-3.5 py-2 rounded-xl font-medium text-xs sm:text-sm flex items-center gap-1.5 transition"
+//           >
+//             <Download className="w-4 h-4" /> Excel
+//           </button>
+
+//           <button
+//             type="button"
+//             onClick={handlePrintProducts}
+//             className="bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 px-3.5 py-2 rounded-xl font-medium text-xs sm:text-sm shadow-sm flex items-center gap-1.5 transition"
+//           >
+//             <Printer className="w-4 h-4 text-slate-700" /> Print ({filteredProducts.length})
+//           </button>
+
+//           <button
+//             type="button"
+//             onClick={handleOpenHistory}
+//             className="bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 px-3.5 py-2 rounded-xl font-medium text-xs sm:text-sm shadow-sm flex items-center gap-1.5 transition"
+//           >
+//             <History className="w-4 h-4 text-indigo-600" /> Return History
+//           </button>
+
+//           <button
+//             type="button"
+//             onClick={() => openAddProductModal('')}
+//             className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-xl font-medium text-xs sm:text-sm shadow-sm flex items-center gap-1.5 transition"
+//           >
+//             <Plus className="w-4 h-4" /> Add Product
+//           </button>
+//         </div>
+//       </div>
+
+//       {/* Total Stock Summary Value Cards */}
+//       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+//         <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-200/80">
+//           <p className="text-xs font-semibold text-slate-500 uppercase">Total Stock Qty</p>
+//           <p className="text-xl sm:text-2xl font-extrabold text-slate-900 mt-1">
+//             {stockSummary.totalUnits.toLocaleString()}{' '}
+//             <span className="text-xs font-medium text-slate-500">pcs</span>
+//           </p>
+//           <p className="text-[11px] text-slate-400 mt-1">
+//             Across {filteredProducts.length} filtered items
+//           </p>
+//         </div>
+
+//         <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-200/80">
+//           <p className="text-xs font-semibold text-slate-500 uppercase">Stock Value (Buy Price)</p>
+//           <p className="text-xl sm:text-2xl font-extrabold text-amber-700 mt-1">
+//             {currency} {stockSummary.totalBuyValue.toLocaleString()}
+//           </p>
+//           <p className="text-[11px] text-slate-400 mt-1">Total invested stock cost</p>
+//         </div>
+
+//         <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-200/80">
+//           <p className="text-xs font-semibold text-slate-500 uppercase">Stock Value (Sell Price)</p>
+//           <p className="text-xl sm:text-2xl font-extrabold text-indigo-700 mt-1">
+//             {currency} {stockSummary.totalSellValue.toLocaleString()}
+//           </p>
+//           <p className="text-[11px] text-slate-400 mt-1">Potential total sales value</p>
+//         </div>
+
+//         <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-200/80">
+//           <p className="text-xs font-semibold text-slate-500 uppercase">Expected Stock Profit</p>
+//           <p
+//             className={`text-xl sm:text-2xl font-extrabold mt-1 ${
+//               expectedProfit >= 0 ? 'text-emerald-600' : 'text-red-600'
+//             }`}
+//           >
+//             {expectedProfit >= 0 ? '+' : ''}{currency} {expectedProfit.toLocaleString()}
+//           </p>
+//           <p className="text-[11px] text-slate-400 mt-1">Sell value minus buy value</p>
+//         </div>
+//       </div>
+
+//       {/* Search & Filter Bar */}
+//       <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-200/80 grid grid-cols-1 md:grid-cols-12 gap-3">
+//         <div className="md:col-span-6 flex items-center gap-2">
+//           <div className="flex-1 flex items-center gap-2.5 border border-slate-200 rounded-xl px-3 py-2">
+//             <Search className="w-4 h-4 text-slate-400 shrink-0" />
+//             <input
+//               type="text"
+//               placeholder="Search by product name, SKU, barcode, or category..."
+//               value={searchTerm}
+//               onChange={(e) => setSearchTerm(e.target.value)}
+//               className="w-full text-sm outline-none text-slate-700 placeholder-slate-400 bg-transparent"
+//             />
+//           </div>
+//           <button
+//             type="button"
+//             onClick={() => {
+//               setScanTarget('search');
+//               setShowCameraScanner(true);
+//             }}
+//             className="bg-slate-800 hover:bg-slate-900 text-white px-3 py-2 rounded-xl text-xs font-semibold inline-flex items-center gap-1.5 shrink-0 transition"
+//             title="Scan Barcode to Find Product"
+//           >
+//             <Camera className="w-4 h-4" /> Scan
+//           </button>
+//         </div>
+
+//         <div className="md:col-span-3">
+//           <select
+//             value={categoryFilter}
+//             onChange={(e) => setCategoryFilter(e.target.value)}
+//             className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm bg-white text-slate-700 outline-none focus:ring-2 focus:ring-indigo-500"
+//           >
+//             <option value="ALL">All Categories</option>
+//             {categories.map(cat => (
+//               <option key={cat} value={cat}>
+//                 {cat}
+//               </option>
+//             ))}
+//           </select>
+//         </div>
+
+//         <div className="md:col-span-3">
+//           <select
+//             value={statusFilter}
+//             onChange={(e) => setStatusFilter(e.target.value)}
+//             className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm bg-white text-slate-700 outline-none focus:ring-2 focus:ring-indigo-500"
+//           >
+//             <option value="ALL">All Stock Status</option>
+//             <option value="IN_STOCK">In Stock Only</option>
+//             <option value="LOW">Low Stock Only</option>
+//           </select>
+//         </div>
+//       </div>
+
+//       {/* Stock Ledger Container */}
+//       <div className="bg-white rounded-2xl shadow-sm border border-slate-200/80 overflow-hidden">
+//         {/* Desktop Table View */}
+//         <div className="hidden lg:block overflow-x-auto">
+//           <table className="w-full text-left border-collapse min-w-[1160px]">
+//             <thead>
+//               <tr className="bg-slate-50 border-b border-slate-200 text-xs font-semibold text-slate-500 uppercase tracking-wider">
+//                 <th className="py-3.5 px-4">Product & SKU</th>
+//                 <th className="py-3.5 px-4">Category</th>
+//                 <th className="py-3.5 px-4 text-right">Buy Price</th>
+//                 <th className="py-3.5 px-4 text-right">Sell Price</th>
+//                 <th className="py-3.5 px-4 text-right">Opening</th>
+//                 <th className="py-3.5 px-4 text-right">Purchase (IN)</th>
+//                 <th className="py-3.5 px-4 text-right">Sell (OUT)</th>
+//                 <th className="py-3.5 px-4 text-right">Return</th>
+//                 <th className="py-3.5 px-4 text-right">Current Stock</th>
+//                 <th className="py-3.5 px-4 text-right">Stock Value</th>
+//                 <th className="py-3.5 px-4">Status</th>
+//                 <th className="py-3.5 px-4 text-right">Actions</th>
+//               </tr>
+//             </thead>
+//             <tbody className="divide-y divide-slate-100 text-sm">
+//               {paginatedProducts.length > 0 ? (
+//                 paginatedProducts.map(p => {
+//                   const { opening, purchased, sold, returned, current, isLow } = getStockMetrics(p);
+//                   const buyVal = Number(p.buyPrice ?? 0);
+//                   const sellVal = Number(p.sellPrice ?? p.price ?? 0);
+//                   const rowStockValue = current * sellVal;
+
+//                   return (
+//                     <tr key={p._id} className="hover:bg-slate-50 transition">
+//                       <td className="py-3.5 px-4">
+//                         <div className="font-bold text-slate-800">{p.name}</div>
+//                         <div className="text-xs font-mono text-slate-500">{p.sku || '-'}</div>
+//                       </td>
+//                       <td className="py-3.5 px-4 text-xs">
+//                         <span className="px-2.5 py-1 rounded-lg bg-slate-100 text-slate-700 font-medium">
+//                           {p.category || 'General'}
+//                         </span>
+//                       </td>
+//                       <td className="py-3.5 px-4 text-right text-slate-600">
+//                         {currency} {buyVal.toLocaleString()}
+//                       </td>
+//                       <td className="py-3.5 px-4 text-right font-semibold text-indigo-700">
+//                         {currency} {sellVal.toLocaleString()}
+//                       </td>
+//                       <td className="py-3.5 px-4 text-right text-slate-600">{opening}</td>
+//                       <td className="py-3.5 px-4 text-right text-emerald-700 font-medium">
+//                         +{purchased}
+//                       </td>
+//                       <td className="py-3.5 px-4 text-right text-amber-700 font-medium">
+//                         -{sold}
+//                       </td>
+//                       <td className="py-3.5 px-4 text-right text-slate-700 font-medium">
+//                         {returned >= 0 ? `+${returned}` : returned}
+//                       </td>
+//                       <td className="py-3.5 px-4 text-right font-extrabold text-slate-900">
+//                         {current}
+//                       </td>
+//                       <td className="py-3.5 px-4 text-right font-semibold text-slate-800">
+//                         {currency} {rowStockValue.toLocaleString()}
+//                       </td>
+//                       <td className="py-3.5 px-4">
+//                         {isLow ? (
+//                           <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-red-50 text-red-600">
+//                             <AlertTriangle className="w-3.5 h-3.5" /> Low Stock
+//                           </span>
+//                         ) : (
+//                           <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700">
+//                             <CheckCircle2 className="w-3.5 h-3.5" /> In Stock
+//                           </span>
+//                         )}
+//                       </td>
+//                       <td className="py-3.5 px-4 text-right space-x-1.5 whitespace-nowrap">
+//                         <button
+//                           type="button"
+//                           onClick={() => {
+//                             setReturnModal({ open: true, product: p });
+//                             setReturnForm({
+//                               returnType: 'SALES_RETURN',
+//                               amount: '',
+//                               reason: ''
+//                             });
+//                           }}
+//                           className="bg-amber-50 hover:bg-amber-100 text-amber-700 px-2.5 py-1.5 rounded-lg text-xs font-semibold inline-flex items-center gap-1 transition"
+//                           title="Record Stock Return"
+//                         >
+//                           <RotateCcw className="w-3.5 h-3.5" /> Return
+//                         </button>
+
+//                         {canDeleteProduct && (
+//                           <button
+//                             type="button"
+//                             onClick={() => handleDelete(p._id)}
+//                             className="bg-red-50 hover:bg-red-100 text-red-600 p-1.5 rounded-lg transition"
+//                             title="Delete Product"
+//                           >
+//                             <Trash2 className="w-3.5 h-3.5" />
+//                           </button>
+//                         )}
+//                       </td>
+//                     </tr>
+//                   );
+//                 })
+//               ) : (
+//                 <tr>
+//                   <td colSpan="12" className="py-10 text-center text-slate-400 text-sm">
+//                     কোনো প্রোডাক্ট পাওয়া যায়নি।
+//                   </td>
+//                 </tr>
+//               )}
+//             </tbody>
+//           </table>
+//         </div>
+
+//         {/* Mobile / Tablet Card View */}
+//         <div className="lg:hidden divide-y divide-slate-100">
+//           {paginatedProducts.length > 0 ? (
+//             paginatedProducts.map(p => {
+//               const { opening, purchased, sold, returned, current, isLow } = getStockMetrics(p);
+//               const buyVal = Number(p.buyPrice ?? 0);
+//               const sellVal = Number(p.sellPrice ?? p.price ?? 0);
+
+//               return (
+//                 <div key={p._id} className="p-4 space-y-3">
+//                   <div className="flex items-start justify-between gap-2">
+//                     <div>
+//                       <p className="font-bold text-slate-800 text-sm">{p.name}</p>
+//                       <p className="text-xs font-mono text-slate-500">
+//                         {p.sku || '-'} • {p.category || 'General'}
+//                       </p>
+//                     </div>
+//                     {isLow ? (
+//                       <span className="px-2.5 py-1 rounded-full text-[11px] font-semibold bg-red-50 text-red-600 shrink-0">
+//                         Low Stock
+//                       </span>
+//                     ) : (
+//                       <span className="px-2.5 py-1 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-700 shrink-0">
+//                         In Stock
+//                       </span>
+//                     )}
+//                   </div>
+
+//                   <div className="grid grid-cols-3 gap-2 bg-slate-50 p-2.5 rounded-xl text-xs">
+//                     <div>
+//                       <span className="text-slate-400 block">Buy / Sell</span>
+//                       <span className="font-semibold text-slate-700">
+//                         {currency}{buyVal} / {currency}{sellVal}
+//                       </span>
+//                     </div>
+//                     <div>
+//                       <span className="text-slate-400 block">Current Stock</span>
+//                       <span className="font-extrabold text-slate-900">{current} pcs</span>
+//                     </div>
+//                     <div>
+//                       <span className="text-slate-400 block">Stock Value</span>
+//                       <span className="font-bold text-indigo-700">
+//                         {currency}{(current * sellVal).toLocaleString()}
+//                       </span>
+//                     </div>
+//                   </div>
+
+//                   <div className="flex items-center justify-between text-[11px] text-slate-500 px-1">
+//                     <span>Open: {opening}</span>
+//                     <span className="text-emerald-700">IN: +{purchased}</span>
+//                     <span className="text-amber-700">OUT: -{sold}</span>
+//                     <span>Ret: {returned}</span>
+//                   </div>
+
+//                   <div className="flex items-center justify-end gap-2 pt-1">
+//                     <button
+//                       type="button"
+//                       onClick={() => {
+//                         setReturnModal({ open: true, product: p });
+//                         setReturnForm({
+//                           returnType: 'SALES_RETURN',
+//                           amount: '',
+//                           reason: ''
+//                         });
+//                       }}
+//                       className="bg-amber-50 hover:bg-amber-100 text-amber-700 px-3 py-1.5 rounded-lg text-xs font-semibold inline-flex items-center gap-1"
+//                     >
+//                       <RotateCcw className="w-3.5 h-3.5" /> Return
+//                     </button>
+//                     {canDeleteProduct && (
+//                       <button
+//                         type="button"
+//                         onClick={() => handleDelete(p._id)}
+//                         className="bg-red-50 hover:bg-red-100 text-red-600 px-2.5 py-1.5 rounded-lg text-xs font-semibold inline-flex items-center gap-1"
+//                       >
+//                         <Trash2 className="w-3.5 h-3.5" /> Delete
+//                       </button>
+//                     )}
+//                   </div>
+//                 </div>
+//               );
+//             })
+//           ) : (
+//             <div className="py-10 text-center text-slate-400 text-sm">
+//               কোনো প্রোডাক্ট পাওয়া যায়নি।
+//             </div>
+//           )}
+//         </div>
+
+//         {/* Pagination Bar */}
+//         {filteredProducts.length > itemsPerPage && (
+//           <div className="px-4 sm:px-6 py-3.5 bg-slate-50 border-t border-slate-200 flex items-center justify-between text-xs sm:text-sm">
+//             <p className="text-slate-500">
+//               Showing <strong className="text-slate-700">{startIndex + 1}</strong> to{' '}
+//               <strong className="text-slate-700">
+//                 {Math.min(startIndex + itemsPerPage, filteredProducts.length)}
+//               </strong>{' '}
+//               of <strong className="text-slate-700">{filteredProducts.length}</strong>
+//             </p>
+//             <div className="flex items-center gap-1.5">
+//               <button
+//                 type="button"
+//                 onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+//                 disabled={safeCurrentPage === 1}
+//                 className="p-2 rounded-lg border border-slate-200 bg-white text-slate-600 disabled:opacity-40"
+//               >
+//                 <ChevronLeft className="w-4 h-4" />
+//               </button>
+//               <span className="px-2.5 font-semibold text-slate-700">
+//                 {safeCurrentPage} / {totalPages}
+//               </span>
+//               <button
+//                 type="button"
+//                 onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+//                 disabled={safeCurrentPage === totalPages}
+//                 className="p-2 rounded-lg border border-slate-200 bg-white text-slate-600 disabled:opacity-40"
+//               >
+//                 <ChevronRight className="w-4 h-4" />
+//               </button>
+//             </div>
+//           </div>
+//         )}
+//       </div>
+
+//       {/* Add Product Modal */}
+//       {isModalOpen && (
+//         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-40 flex items-center justify-center p-4">
+//           <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
+//             <div className="flex items-center justify-between border-b pb-3">
+//               <h3 className="font-bold text-slate-800 text-base sm:text-lg">
+//                 Add New Product
+//               </h3>
+//               <button
+//                 type="button"
+//                 onClick={() => setIsModalOpen(false)}
+//                 className="text-slate-400 hover:text-slate-700 p-1 rounded-lg hover:bg-slate-100"
+//               >
+//                 <X className="w-5 h-5" />
+//               </button>
+//             </div>
+
+//             <form onSubmit={handleSubmit} className="space-y-4">
+//               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+//                 <div>
+//                   <label className="block text-xs font-semibold text-slate-600 mb-1">
+//                     Product Name *
+//                   </label>
+//                   <input
+//                     type="text"
+//                     required
+//                     value={form.name}
+//                     onChange={e => setForm({ ...form, name: e.target.value })}
+//                     placeholder="e.g. Logitech Mouse"
+//                     className="w-full border border-slate-200 px-3 py-2 rounded-xl text-sm outline-none focus:ring-2 focus:ring-indigo-500"
+//                   />
+//                 </div>
+
+//                 <div>
+//                   <div className="flex items-center justify-between gap-1 mb-1">
+//                     <label className="text-xs font-semibold text-slate-600">
+//                       SKU Code *
+//                     </label>
+//                     <div className="flex items-center gap-2">
+//                       <button
+//                         type="button"
+//                         onClick={() => {
+//                           setScanTarget('form');
+//                           setShowCameraScanner(true);
+//                         }}
+//                         className="text-[11px] font-semibold text-slate-700 hover:text-slate-900 inline-flex items-center gap-0.5"
+//                       >
+//                         <Camera className="w-3 h-3 text-indigo-600" /> Scan
+//                       </button>
+//                       <button
+//                         type="button"
+//                         onClick={() =>
+//                           setForm(prev => ({
+//                             ...prev,
+//                             sku: generateUniqueSku(productList, 'PRD')
+//                           }))
+//                         }
+//                         className="text-[11px] font-semibold text-indigo-600 hover:text-indigo-800 inline-flex items-center gap-0.5"
+//                       >
+//                         <Sparkles className="w-3 h-3" /> Auto SKU
+//                       </button>
+//                     </div>
+//                   </div>
+//                   <input
+//                     type="text"
+//                     required
+//                     value={form.sku}
+//                     onChange={e => setForm({ ...form, sku: e.target.value })}
+//                     placeholder="PRD-1001"
+//                     className="w-full border border-slate-200 px-3 py-2 rounded-xl text-sm font-mono outline-none focus:ring-2 focus:ring-indigo-500"
+//                   />
+//                 </div>
+//               </div>
+
+//               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+//                 <div>
+//                   <label className="block text-xs font-semibold text-slate-600 mb-1">
+//                     Category *
+//                   </label>
+//                   <input
+//                     type="text"
+//                     required
+//                     list="product-categories-list"
+//                     value={form.category}
+//                     onChange={e => setForm({ ...form, category: e.target.value })}
+//                     placeholder="e.g. Electronics"
+//                     className="w-full border border-slate-200 px-3 py-2 rounded-xl text-sm outline-none focus:ring-2 focus:ring-indigo-500"
+//                   />
+//                   <datalist id="product-categories-list">
+//                     {categories.map(cat => (
+//                       <option key={cat} value={cat} />
+//                     ))}
+//                   </datalist>
+//                 </div>
+
+//                 <div>
+//                   <label className="block text-xs font-semibold text-slate-600 mb-1">
+//                     Opening Stock
+//                   </label>
+//                   <input
+//                     type="number"
+//                     min="0"
+//                     value={form.openingStock}
+//                     onChange={e => setForm({ ...form, openingStock: e.target.value })}
+//                     placeholder="0"
+//                     className="w-full border border-slate-200 px-3 py-2 rounded-xl text-sm outline-none focus:ring-2 focus:ring-indigo-500"
+//                   />
+//                 </div>
+//               </div>
+
+//               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
+//                 <div>
+//                   <label className="block text-xs font-semibold text-slate-600 mb-1">
+//                     Buy Price ({currency}) *
+//                   </label>
+//                   <input
+//                     type="number"
+//                     min="0"
+//                     step="any"
+//                     required
+//                     value={form.buyPrice}
+//                     onChange={e => setForm({ ...form, buyPrice: e.target.value })}
+//                     placeholder="0"
+//                     className="w-full border border-slate-200 px-3 py-2 rounded-xl text-sm outline-none focus:ring-2 focus:ring-indigo-500"
+//                   />
+//                 </div>
+
+//                 <div>
+//                   <label className="block text-xs font-semibold text-slate-600 mb-1">
+//                     Sell Price ({currency}) *
+//                   </label>
+//                   <input
+//                     type="number"
+//                     min="0"
+//                     step="any"
+//                     required
+//                     value={form.sellPrice}
+//                     onChange={e => setForm({ ...form, sellPrice: e.target.value })}
+//                     placeholder="0"
+//                     className="w-full border border-slate-200 px-3 py-2 rounded-xl text-sm outline-none focus:ring-2 focus:ring-indigo-500"
+//                   />
+//                 </div>
+
+//                 <div>
+//                   <label className="block text-xs font-semibold text-slate-600 mb-1">
+//                     Min Stock Alert
+//                   </label>
+//                   <input
+//                     type="number"
+//                     min="0"
+//                     value={form.minStockLevel}
+//                     onChange={e => setForm({ ...form, minStockLevel: e.target.value })}
+//                     placeholder="5"
+//                     className="w-full border border-slate-200 px-3 py-2 rounded-xl text-sm outline-none focus:ring-2 focus:ring-indigo-500"
+//                   />
+//                 </div>
+//               </div>
+
+//               <div className="flex justify-end gap-2 pt-3 border-t">
+//                 <button
+//                   type="button"
+//                   onClick={() => setIsModalOpen(false)}
+//                   className="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs sm:text-sm font-semibold transition"
+//                 >
+//                   Cancel
+//                 </button>
+//                 <button
+//                   type="submit"
+//                   disabled={loading}
+//                   className="px-5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-400 text-white text-xs sm:text-sm font-semibold transition"
+//                 >
+//                   {loading ? 'Saving...' : 'Save Product'}
+//                 </button>
+//               </div>
+//             </form>
+//           </div>
+//         </div>
+//       )}
+
+//       {/* Stock Return Modal */}
+//       {returnModal.open && returnModal.product && (
+//         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-40 flex items-center justify-center p-4">
+//           <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4">
+//             <div className="flex items-center justify-between border-b pb-3">
+//               <div>
+//                 <h3 className="font-bold text-slate-800 text-base">Stock Return Entry</h3>
+//                 <p className="text-xs text-slate-500">
+//                   {returnModal.product.name} ({returnModal.product.sku})
+//                 </p>
+//               </div>
+//               <button
+//                 type="button"
+//                 onClick={() => setReturnModal({ open: false, product: null })}
+//                 className="text-slate-400 hover:text-slate-700 p-1 rounded-lg hover:bg-slate-100"
+//               >
+//                 <X className="w-5 h-5" />
+//               </button>
+//             </div>
+
+//             <form onSubmit={handleReturnSubmit} className="space-y-3.5">
+//               <div>
+//                 <label className="block text-xs font-semibold text-slate-600 mb-1">
+//                   Return Type
+//                 </label>
+//                 <select
+//                   value={returnForm.returnType}
+//                   onChange={e =>
+//                     setReturnForm({ ...returnForm, returnType: e.target.value })
+//                   }
+//                   className="w-full border border-slate-200 px-3 py-2 rounded-xl text-sm bg-white outline-none focus:ring-2 focus:ring-indigo-500"
+//                 >
+//                   <option value="SALES_RETURN">Sales Return (Stock +)</option>
+//                   <option value="PURCHASE_RETURN">Purchase Return (Stock -)</option>
+//                 </select>
+//               </div>
+
+//               <div>
+//                 <label className="block text-xs font-semibold text-slate-600 mb-1">
+//                   Return Quantity *
+//                 </label>
+//                 <input
+//                   type="number"
+//                   min="1"
+//                   required
+//                   value={returnForm.amount}
+//                   onChange={e =>
+//                     setReturnForm({ ...returnForm, amount: e.target.value })
+//                   }
+//                   placeholder="Enter quantity"
+//                   className="w-full border border-slate-200 px-3 py-2 rounded-xl text-sm outline-none focus:ring-2 focus:ring-indigo-500"
+//                 />
+//               </div>
+
+//               <div>
+//                 <label className="block text-xs font-semibold text-slate-600 mb-1">
+//                   Reason / Note
+//                 </label>
+//                 <input
+//                   type="text"
+//                   value={returnForm.reason}
+//                   onChange={e =>
+//                     setReturnForm({ ...returnForm, reason: e.target.value })
+//                   }
+//                   placeholder="Damaged, expired, or customer return..."
+//                   className="w-full border border-slate-200 px-3 py-2 rounded-xl text-sm outline-none focus:ring-2 focus:ring-indigo-500"
+//                 />
+//               </div>
+
+//               <div className="flex justify-end gap-2 pt-3 border-t">
+//                 <button
+//                   type="button"
+//                   onClick={() => setReturnModal({ open: false, product: null })}
+//                   className="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs sm:text-sm font-semibold transition"
+//                 >
+//                   Cancel
+//                 </button>
+//                 <button
+//                   type="submit"
+//                   disabled={loading}
+//                   className="px-4 py-2 rounded-xl bg-amber-600 hover:bg-amber-700 disabled:bg-amber-400 text-white text-xs sm:text-sm font-semibold transition"
+//                 >
+//                   {loading ? 'Processing...' : 'Submit Return'}
+//                 </button>
+//               </div>
+//             </form>
+//           </div>
+//         </div>
+//       )}
+
+//       {/* Return History Modal */}
+//       {historyModalOpen && (
+//         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-40 flex items-center justify-center p-4">
+//           <div className="bg-white rounded-2xl max-w-4xl w-full p-6 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
+//             <div className="flex flex-wrap items-center justify-between gap-2 border-b pb-3">
+//               <div>
+//                 <h3 className="font-bold text-slate-800 text-base sm:text-lg">
+//                   Stock Return History
+//                 </h3>
+//                 <p className="text-xs text-slate-500">
+//                   Filter by date range and print or review sales/purchase returns.
+//                 </p>
+//               </div>
+
+//               <div className="flex items-center gap-2">
+//                 <button
+//                   type="button"
+//                   onClick={handlePrintReturnHistory}
+//                   className="bg-indigo-600 hover:bg-indigo-700 text-white px-3.5 py-1.5 rounded-xl text-xs font-semibold inline-flex items-center gap-1.5 transition"
+//                 >
+//                   <Printer className="w-4 h-4" /> Print History
+//                 </button>
+//                 <button
+//                   type="button"
+//                   onClick={() => setHistoryModalOpen(false)}
+//                   className="text-slate-400 hover:text-slate-700 p-1.5 rounded-lg hover:bg-slate-100"
+//                 >
+//                   <X className="w-5 h-5" />
+//                 </button>
+//               </div>
+//             </div>
+
+//             {/* Date Filter Row */}
+//             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 bg-slate-50 p-3 rounded-xl border border-slate-200/80 items-end">
+//               <div>
+//                 <label className="block text-xs font-semibold text-slate-600 mb-1">
+//                   From Date
+//                 </label>
+//                 <input
+//                   type="date"
+//                   value={historyFromDate}
+//                   onChange={e => setHistoryFromDate(e.target.value)}
+//                   className="w-full border border-slate-200 bg-white px-3 py-1.5 rounded-lg text-xs sm:text-sm"
+//                 />
+//               </div>
+//               <div>
+//                 <label className="block text-xs font-semibold text-slate-600 mb-1">
+//                   To Date
+//                 </label>
+//                 <input
+//                   type="date"
+//                   value={historyToDate}
+//                   onChange={e => setHistoryToDate(e.target.value)}
+//                   className="w-full border border-slate-200 bg-white px-3 py-1.5 rounded-lg text-xs sm:text-sm"
+//                 />
+//               </div>
+//               <div className="flex gap-2">
+//                 <button
+//                   type="button"
+//                   onClick={() => {
+//                     setHistoryFromDate('');
+//                     setHistoryToDate('');
+//                   }}
+//                   className="px-3 py-1.5 rounded-lg bg-white border border-slate-200 hover:bg-slate-100 text-xs font-semibold text-slate-700"
+//                 >
+//                   Clear Dates
+//                 </button>
+//               </div>
+//             </div>
+
+//             {/* Summary Strip */}
+//             <div className="grid grid-cols-3 gap-3 text-xs">
+//               <div className="bg-slate-50 border border-slate-200/70 rounded-xl p-3">
+//                 <span className="text-slate-500 block">Total Records</span>
+//                 <strong className="text-sm text-slate-800">
+//                   {filteredReturnHistory.length}
+//                 </strong>
+//               </div>
+//               <div className="bg-emerald-50/70 border border-emerald-200/70 rounded-xl p-3">
+//                 <span className="text-emerald-700 block">Sales Return (+)</span>
+//                 <strong className="text-sm text-emerald-800">
+//                   {salesReturnQty.toLocaleString()} pcs
+//                 </strong>
+//               </div>
+//               <div className="bg-amber-50/70 border border-amber-200/70 rounded-xl p-3">
+//                 <span className="text-amber-700 block">Purchase Return (-)</span>
+//                 <strong className="text-sm text-amber-800">
+//                   {purchaseReturnQty.toLocaleString()} pcs
+//                 </strong>
+//               </div>
+//             </div>
+
+//             {/* Return Table */}
+//             <div className="overflow-x-auto border border-slate-200 rounded-xl">
+//               <table className="w-full text-left border-collapse min-w-[640px] text-xs sm:text-sm">
+//                 <thead>
+//                   <tr className="bg-slate-50 border-b text-xs font-semibold text-slate-500 uppercase">
+//                     <th className="py-3 px-4">Return #</th>
+//                     <th className="py-3 px-4">Product</th>
+//                     <th className="py-3 px-4">Type</th>
+//                     <th className="py-3 px-4 text-right">Qty</th>
+//                     <th className="py-3 px-4">Reason</th>
+//                     <th className="py-3 px-4">Date</th>
+//                   </tr>
+//                 </thead>
+//                 <tbody className="divide-y divide-slate-100">
+//                   {loadingHistory ? (
+//                     <tr>
+//                       <td colSpan="6" className="py-8 text-center text-slate-400">
+//                         Loading return history...
+//                       </td>
+//                     </tr>
+//                   ) : filteredReturnHistory.length > 0 ? (
+//                     filteredReturnHistory.map((item, idx) => {
+//                       const isSalesRet = item.returnType === 'SALES_RETURN';
+//                       return (
+//                         <tr key={item._id || idx} className="hover:bg-slate-50">
+//                           <td className="py-3 px-4 font-mono font-semibold text-indigo-600">
+//                             {item.returnNumber || '-'}
+//                           </td>
+//                           <td className="py-3 px-4 font-medium text-slate-800">
+//                             {item.product?.name || 'Deleted Product'}
+//                             {item.product?.sku && (
+//                               <span className="block text-[11px] font-mono text-slate-400">
+//                                 {item.product.sku}
+//                               </span>
+//                             )}
+//                           </td>
+//                           <td className="py-3 px-4">
+//                             <span
+//                               className={`px-2 py-0.5 rounded-full text-xs font-semibold ${
+//                                 isSalesRet
+//                                   ? 'bg-emerald-50 text-emerald-700'
+//                                   : 'bg-amber-50 text-amber-700'
+//                               }`}
+//                             >
+//                               {isSalesRet ? 'Sales Return (+)' : 'Purchase Return (-)'}
+//                             </span>
+//                           </td>
+//                           <td className="py-3 px-4 text-right font-bold">
+//                             {Number(item.quantity || 0).toLocaleString()}
+//                           </td>
+//                           <td className="py-3 px-4 text-slate-600">{item.reason || '-'}</td>
+//                           <td className="py-3 px-4 text-slate-500">
+//                             {item.createdAt
+//                               ? new Date(item.createdAt).toLocaleDateString()
+//                               : '-'}
+//                           </td>
+//                         </tr>
+//                       );
+//                     })
+//                   ) : (
+//                     <tr>
+//                       <td colSpan="6" className="py-8 text-center text-slate-400">
+//                         কোনো রিটার্ন রেকর্ড পাওয়া যায়নি।
+//                       </td>
+//                     </tr>
+//                   )}
+//                 </tbody>
+//               </table>
+//             </div>
+//           </div>
+//         </div>
+//       )}
+
+//       {/* Mobile Camera Barcode Scanner Modal */}
+//       <CameraScannerModal
+//         isOpen={showCameraScanner}
+//         onClose={() => setShowCameraScanner(false)}
+//         title={
+//           scanTarget === 'form'
+//             ? 'Scan Barcode for Product SKU'
+//             : 'Scan Barcode to Find Product'
+//         }
+//         onScanSuccess={handleCameraScanSuccess}
+//       />
+//     </div>
+//   );
+// }
+
+
+
 import { useState, useEffect } from 'react';
 import {
   Plus,
+  Pencil,
   Trash2,
   Search,
   X,
@@ -1510,6 +3091,7 @@ import {
 } from 'lucide-react';
 import {
   addProduct,
+  updateProduct,
   deleteProduct,
   createReturn,
   getReturns
@@ -1530,10 +3112,11 @@ const getEffectiveUser = (propUser) => {
   }
 };
 
-const generateUniqueSku = (existingProducts = [], prefix = 'PRD') => {
+const generateUniqueSku = (existingProducts = [], prefix = 'PRD', excludeId = null) => {
   const list = Array.isArray(existingProducts) ? existingProducts : [];
   const used = new Set(
     list
+      .filter(p => !excludeId || p?._id !== excludeId)
       .flatMap(p => [p?.sku, p?.barcode])
       .map(v => String(v || '').trim().toUpperCase())
       .filter(Boolean)
@@ -1552,6 +3135,16 @@ const generateUniqueSku = (existingProducts = [], prefix = 'PRD') => {
   return candidate;
 };
 
+const EMPTY_FORM = {
+  name: '',
+  sku: '',
+  category: '',
+  openingStock: '',
+  buyPrice: '',
+  sellPrice: '',
+  minStockLevel: 5
+};
+
 export default function Products({ products = [], suppliers, reloadData, settings, user }) {
   const activeSettings = {
     ...DEFAULT_ERP_SETTINGS,
@@ -1563,6 +3156,7 @@ export default function Products({ products = [], suppliers, reloadData, setting
   const productList = Array.isArray(products) ? products : [];
 
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingProductId, setEditingProductId] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('ALL');
   const [statusFilter, setStatusFilter] = useState('ALL'); // ALL | LOW | IN_STOCK
@@ -1576,16 +3170,8 @@ export default function Products({ products = [], suppliers, reloadData, setting
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 8;
 
-  // Add Product Form State (buyPrice & sellPrice)
-  const [form, setForm] = useState({
-    name: '',
-    sku: '',
-    category: '',
-    openingStock: '',
-    buyPrice: '',
-    sellPrice: '',
-    minStockLevel: 5
-  });
+  // Add / Edit Product Form State
+  const [form, setForm] = useState(EMPTY_FORM);
 
   // Return Modal State
   const [returnModal, setReturnModal] = useState({ open: false, product: null });
@@ -1607,6 +3193,7 @@ export default function Products({ products = [], suppliers, reloadData, setting
   const isAdmin =
     (currentUser?.userType || '').toLowerCase() === 'admin' ||
     (currentUser?.role || '').toLowerCase() === 'admin';
+  const canEditProduct = isAdmin || Boolean(currentUser?.permissions?.products);
   const canDeleteProduct = isAdmin || Boolean(currentUser?.permissions?.products);
 
   // Stock Ledger Metrics Helper
@@ -1693,16 +3280,34 @@ export default function Products({ products = [], suppliers, reloadData, setting
   const startIndex = (safeCurrentPage - 1) * itemsPerPage;
   const paginatedProducts = filteredProducts.slice(startIndex, startIndex + itemsPerPage);
 
+  const closeProductModal = () => {
+    setIsModalOpen(false);
+    setEditingProductId(null);
+    setForm(EMPTY_FORM);
+  };
+
   const openAddProductModal = (prefilledSku = '') => {
     const cleanSku = String(prefilledSku || '').trim();
+    setEditingProductId(null);
     setForm({
-      name: '',
-      sku: cleanSku || generateUniqueSku(productList, 'PRD'),
-      category: '',
-      openingStock: '',
-      buyPrice: '',
-      sellPrice: '',
-      minStockLevel: 5
+      ...EMPTY_FORM,
+      sku: cleanSku || generateUniqueSku(productList, 'PRD')
+    });
+    setIsModalOpen(true);
+  };
+
+  const openEditProductModal = (product) => {
+    if (!product) return;
+    const { current } = getStockMetrics(product);
+    setEditingProductId(product._id);
+    setForm({
+      name: product.name || '',
+      sku: product.sku || product.barcode || '',
+      category: product.category || 'General',
+      openingStock: current,
+      buyPrice: product.buyPrice ?? 0,
+      sellPrice: product.sellPrice ?? product.price ?? 0,
+      minStockLevel: product.minStockLevel ?? 5
     });
     setIsModalOpen(true);
   };
@@ -1734,43 +3339,49 @@ export default function Products({ products = [], suppliers, reloadData, setting
     }
   };
 
-  // ১. নতুন প্রোডাক্ট সেভ করা
+  // ১. নতুন প্রোডাক্ট যোগ বা বিদ্যমান প্রোডাক্ট আপডেট করা
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
     try {
-      const openingNum = Math.max(0, Number(form.openingStock) || 0);
+      const stockNum = Math.max(0, Number(form.openingStock) || 0);
       const buyNum = Math.max(0, Number(form.buyPrice) || 0);
       const sellNum = Math.max(0, Number(form.sellPrice) || 0);
       const cleanSku =
-        String(form.sku || '').trim() || generateUniqueSku(productList, 'PRD');
+        String(form.sku || '').trim() ||
+        generateUniqueSku(productList, 'PRD', editingProductId);
 
-      await addProduct({
-        name: String(form.name || '').trim(),
-        sku: cleanSku,
-        barcode: cleanSku,
-        category: String(form.category || '').trim() || 'General',
-        openingStock: openingNum,
-        quantity: openingNum,
-        buyPrice: buyNum,
-        sellPrice: sellNum,
-        price: sellNum,
-        minStockLevel: Math.max(0, Number(form.minStockLevel) || 5)
-      });
+      if (editingProductId) {
+        await updateProduct(editingProductId, {
+          name: String(form.name || '').trim(),
+          sku: cleanSku,
+          barcode: cleanSku,
+          category: String(form.category || '').trim() || 'General',
+          buyPrice: buyNum,
+          sellPrice: sellNum,
+          price: sellNum,
+          quantity: stockNum,
+          minStockLevel: Math.max(0, Number(form.minStockLevel) || 5)
+        });
+      } else {
+        await addProduct({
+          name: String(form.name || '').trim(),
+          sku: cleanSku,
+          barcode: cleanSku,
+          category: String(form.category || '').trim() || 'General',
+          openingStock: stockNum,
+          quantity: stockNum,
+          buyPrice: buyNum,
+          sellPrice: sellNum,
+          price: sellNum,
+          minStockLevel: Math.max(0, Number(form.minStockLevel) || 5)
+        });
+      }
 
-      setForm({
-        name: '',
-        sku: '',
-        category: '',
-        openingStock: '',
-        buyPrice: '',
-        sellPrice: '',
-        minStockLevel: 5
-      });
-      setIsModalOpen(false);
+      closeProductModal();
       reloadData?.();
     } catch (err) {
-      alert(err.response?.data?.message || 'Error adding product');
+      alert(err.response?.data?.message || err.message || 'Error saving product');
     } finally {
       setLoading(false);
     }
@@ -2385,7 +3996,7 @@ export default function Products({ products = [], suppliers, reloadData, setting
       <div className="bg-white rounded-2xl shadow-sm border border-slate-200/80 overflow-hidden">
         {/* Desktop Table View */}
         <div className="hidden lg:block overflow-x-auto">
-          <table className="w-full text-left border-collapse min-w-[1160px]">
+          <table className="w-full text-left border-collapse min-w-[1180px]">
             <thead>
               <tr className="bg-slate-50 border-b border-slate-200 text-xs font-semibold text-slate-500 uppercase tracking-wider">
                 <th className="py-3.5 px-4">Product & SKU</th>
@@ -2455,6 +4066,17 @@ export default function Products({ products = [], suppliers, reloadData, setting
                         )}
                       </td>
                       <td className="py-3.5 px-4 text-right space-x-1.5 whitespace-nowrap">
+                        {canEditProduct && (
+                          <button
+                            type="button"
+                            onClick={() => openEditProductModal(p)}
+                            className="bg-indigo-50 hover:bg-indigo-100 text-indigo-700 px-2.5 py-1.5 rounded-lg text-xs font-semibold inline-flex items-center gap-1 transition"
+                            title="Edit Product"
+                          >
+                            <Pencil className="w-3.5 h-3.5" /> Edit
+                          </button>
+                        )}
+
                         <button
                           type="button"
                           onClick={() => {
@@ -2551,6 +4173,15 @@ export default function Products({ products = [], suppliers, reloadData, setting
                   </div>
 
                   <div className="flex items-center justify-end gap-2 pt-1">
+                    {canEditProduct && (
+                      <button
+                        type="button"
+                        onClick={() => openEditProductModal(p)}
+                        className="bg-indigo-50 hover:bg-indigo-100 text-indigo-700 px-3 py-1.5 rounded-lg text-xs font-semibold inline-flex items-center gap-1"
+                      >
+                        <Pencil className="w-3.5 h-3.5" /> Edit
+                      </button>
+                    )}
                     <button
                       type="button"
                       onClick={() => {
@@ -2620,17 +4251,17 @@ export default function Products({ products = [], suppliers, reloadData, setting
         )}
       </div>
 
-      {/* Add Product Modal */}
+      {/* Add / Edit Product Modal */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-40 flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between border-b pb-3">
               <h3 className="font-bold text-slate-800 text-base sm:text-lg">
-                Add New Product
+                {editingProductId ? 'Edit Product' : 'Add New Product'}
               </h3>
               <button
                 type="button"
-                onClick={() => setIsModalOpen(false)}
+                onClick={closeProductModal}
                 className="text-slate-400 hover:text-slate-700 p-1 rounded-lg hover:bg-slate-100"
               >
                 <X className="w-5 h-5" />
@@ -2674,7 +4305,7 @@ export default function Products({ products = [], suppliers, reloadData, setting
                         onClick={() =>
                           setForm(prev => ({
                             ...prev,
-                            sku: generateUniqueSku(productList, 'PRD')
+                            sku: generateUniqueSku(productList, 'PRD', editingProductId)
                           }))
                         }
                         className="text-[11px] font-semibold text-indigo-600 hover:text-indigo-800 inline-flex items-center gap-0.5"
@@ -2717,7 +4348,7 @@ export default function Products({ products = [], suppliers, reloadData, setting
 
                 <div>
                   <label className="block text-xs font-semibold text-slate-600 mb-1">
-                    Opening Stock
+                    {editingProductId ? 'Current Stock Qty' : 'Opening Stock'}
                   </label>
                   <input
                     type="number"
@@ -2781,7 +4412,7 @@ export default function Products({ products = [], suppliers, reloadData, setting
               <div className="flex justify-end gap-2 pt-3 border-t">
                 <button
                   type="button"
-                  onClick={() => setIsModalOpen(false)}
+                  onClick={closeProductModal}
                   className="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs sm:text-sm font-semibold transition"
                 >
                   Cancel
@@ -2791,7 +4422,11 @@ export default function Products({ products = [], suppliers, reloadData, setting
                   disabled={loading}
                   className="px-5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-400 text-white text-xs sm:text-sm font-semibold transition"
                 >
-                  {loading ? 'Saving...' : 'Save Product'}
+                  {loading
+                    ? 'Saving...'
+                    : editingProductId
+                    ? 'Update Product'
+                    : 'Save Product'}
                 </button>
               </div>
             </form>

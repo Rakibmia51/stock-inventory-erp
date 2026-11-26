@@ -42,6 +42,7 @@ export const adminResetUserPassword = (data) => API.put('/auth/users/reset-passw
 // Existing ERP Endpoints
 export const getProducts = () => API.get('/products');
 export const addProduct = (data) => API.post('/products', data);
+export const updateProduct = (id, data) => API.put(`/products/${id}`, data);
 export const updateStock = (id, data) => API.patch(`/products/${id}/stock`, data);
 export const deleteProduct = (id) => API.delete(`/products/${id}`);
 export const returnProductStock = (id, data) => API.post(`/products/${id}/return`, data);
