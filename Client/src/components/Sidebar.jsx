@@ -109,7 +109,7 @@ export default function Sidebar({
     { id: 'barcode', 
       label: 'Barcode', 
       icon: Barcode, 
-      show: true 
+      show: isAdmin || Boolean(user?.permissions?.barcode)
     },
     {
       id: 'reports',

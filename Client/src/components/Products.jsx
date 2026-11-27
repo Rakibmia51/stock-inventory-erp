@@ -3193,8 +3193,9 @@ export default function Products({ products = [], suppliers, reloadData, setting
   const isAdmin =
     (currentUser?.userType || '').toLowerCase() === 'admin' ||
     (currentUser?.role || '').toLowerCase() === 'admin';
-  const canEditProduct = isAdmin || Boolean(currentUser?.permissions?.products);
-  const canDeleteProduct = isAdmin || Boolean(currentUser?.permissions?.products);
+
+  // const canEditProduct = isAdmin || Boolean(currentUser?.permissions?.products);
+  // const canDeleteProduct = isAdmin || Boolean(currentUser?.permissions?.products);
 
   // Stock Ledger Metrics Helper
   const getStockMetrics = (p) => {
@@ -4066,7 +4067,7 @@ export default function Products({ products = [], suppliers, reloadData, setting
                         )}
                       </td>
                       <td className="py-3.5 px-4 text-right space-x-1.5 whitespace-nowrap">
-                        {canEditProduct && (
+                        {isAdmin && (
                           <button
                             type="button"
                             onClick={() => openEditProductModal(p)}
@@ -4093,7 +4094,7 @@ export default function Products({ products = [], suppliers, reloadData, setting
                           <RotateCcw className="w-3.5 h-3.5" /> Return
                         </button>
 
-                        {canDeleteProduct && (
+                        {isAdmin && (
                           <button
                             type="button"
                             onClick={() => handleDelete(p._id)}
@@ -4173,7 +4174,7 @@ export default function Products({ products = [], suppliers, reloadData, setting
                   </div>
 
                   <div className="flex items-center justify-end gap-2 pt-1">
-                    {canEditProduct && (
+                    {isAdmin && (
                       <button
                         type="button"
                         onClick={() => openEditProductModal(p)}
@@ -4196,7 +4197,7 @@ export default function Products({ products = [], suppliers, reloadData, setting
                     >
                       <RotateCcw className="w-3.5 h-3.5" /> Return
                     </button>
-                    {canDeleteProduct && (
+                    {isAdmin && (
                       <button
                         type="button"
                         onClick={() => handleDelete(p._id)}

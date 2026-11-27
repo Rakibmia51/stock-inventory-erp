@@ -18,6 +18,7 @@ const userSchema = new mongoose.Schema({
     invoices: { type: Boolean, default: false },
     accounts: { type: Boolean, default: false },
     reports: { type: Boolean, default: false },
+    barcode: { type: Boolean, default: false },
     users:{type: Boolean, default: false}
   }
 }, { timestamps: true });

@@ -946,7 +946,7 @@ export default function Accounts({
                         {Number(item.amount || 0).toLocaleString()}
                       </td>
                       <td className="py-3.5 px-4 text-right">
-                        {canDelete && (
+                        {isAdmin && (
                           <button
                             type="button"
                             onClick={() => handleDelete(item)}
@@ -1020,7 +1020,7 @@ export default function Accounts({
                     </span>
                   </div>
 
-                  {canDelete && (
+                  {isAdmin && (
                     <div className="flex justify-end">
                       <button
                         type="button"

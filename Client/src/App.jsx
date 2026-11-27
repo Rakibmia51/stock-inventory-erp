@@ -651,6 +651,8 @@ export default function App() {
             <BarcodeModule 
               products={products} 
               settings={erpSettings} 
+              reloadData={loadData}
+              user={user}
             />
           )}
         </main>

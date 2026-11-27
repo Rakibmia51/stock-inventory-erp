@@ -390,6 +390,7 @@ const buildDefaultPermissions = (isAdmin) => ({
   invoices: Boolean(isAdmin),
   accounts: Boolean(isAdmin),
   reports: Boolean(isAdmin),
+  barcode: Boolean(isAdmin),
   users: Boolean(isAdmin)
 });
 

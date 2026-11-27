@@ -3690,7 +3690,7 @@ export default function Invoices({
                         <FileText className="w-3.5 h-3.5" /> View / Print
                       </button>
 
-                      {canDeleteInvoice && (
+                      {isAdmin && (
                         <button
                           type="button"
                           onClick={() => handleDeleteInvoice(inv)}

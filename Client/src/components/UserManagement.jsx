@@ -32,6 +32,7 @@ const MODULES = [
   { key: 'invoices', label: 'Sales & Invoices' },
   { key: 'accounts', label: 'Accounts / Finance' },
   { key: 'reports', label: 'Reports' },
+  { key: 'barcode', label: 'Barcode' },
   { key: 'users', label: 'User Management' }
 ];
 
