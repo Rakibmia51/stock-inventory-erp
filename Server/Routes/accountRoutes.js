@@ -3,7 +3,8 @@ const router = express.Router();
 const {
   getTransactions,
   createTransaction,
-  deleteTransaction
+  deleteTransaction,
+  updateTransaction
 } = require('../Controllers/accountController');
 const { protect, checkPermission } = require('../middleware/authMiddleware');
 
@@ -12,6 +13,8 @@ router.get('/', protect, getTransactions);
 
 // নতুন এন্ট্রি তৈরি করা
 router.post('/', protect, checkPermission('accounts'), createTransaction);
+
+router.put('/:id', protect, checkPermission('accounts'), updateTransaction);
 
 // এন্ট্রি ডিলিট করা (Admin বা Accounts পারমিশন থাকলে)
 router.delete('/:id', protect, checkPermission('accounts'), deleteTransaction);

@@ -1,4 +1,5 @@
-// import { useState, useEffect } from 'react';
+
+// import { useState, useEffect, useRef } from 'react';
 // import {
 //   Settings as SettingsIcon,
 //   Building2,
@@ -7,12 +8,16 @@
 //   Save,
 //   RotateCcw,
 //   Download,
-//   CheckCircle2
+//   CheckCircle2,
+//   Upload,
+//   Trash2,
+//   Image as ImageIcon
 // } from 'lucide-react';
 // import { getSettings, updateSettings } from '../services/api';
 
 // export const DEFAULT_ERP_SETTINGS = {
 //   companyName: 'NEXUS ERP',
+//   logoUrl: '',
 //   tagline: 'Inventory, Sales & Accounting Suite',
 //   phone: '',
 //   email: '',
@@ -72,6 +77,7 @@
 //   }));
 //   const [savedNotice, setSavedNotice] = useState('');
 //   const [saving, setSaving] = useState(false);
+//   const fileInputRef = useRef(null);
 
 //   useEffect(() => {
 //     if (settings) {
@@ -100,6 +106,39 @@
 //   const handleField = (key, value) => {
 //     setForm(prev => ({ ...prev, [key]: value }));
 //     if (savedNotice) setSavedNotice('');
+//   };
+
+//   const handleLogoFileChange = (e) => {
+//     const file = e.target.files?.[0];
+//     if (!file) return;
+
+//     if (!file.type.startsWith('image/')) {
+//       alert('Please select a valid image file (PNG, JPG, WEBP, SVG).');
+//       e.target.value = '';
+//       return;
+//     }
+
+//     const maxBytes = 2 * 1024 * 1024; // 2MB limit for clean DB storage & fast rendering
+//     if (file.size > maxBytes) {
+//       alert('Logo image size must be 2MB or less.');
+//       e.target.value = '';
+//       return;
+//     }
+
+//     const reader = new FileReader();
+//     reader.onload = () => {
+//       if (typeof reader.result === 'string') {
+//         handleField('logoUrl', reader.result);
+//       }
+//     };
+//     reader.readAsDataURL(file);
+//   };
+
+//   const handleRemoveLogo = () => {
+//     handleField('logoUrl', '');
+//     if (fileInputRef.current) {
+//       fileInputRef.current.value = '';
+//     }
 //   };
 
 //   const persistSettings = async (targetObj, successMsg) => {
@@ -134,6 +173,7 @@
 //       ...DEFAULT_ERP_SETTINGS,
 //       ...pickKnownSettings(form),
 //       companyName: String(form.companyName || '').trim() || DEFAULT_ERP_SETTINGS.companyName,
+//       logoUrl: String(form.logoUrl || '').trim(),
 //       currencySymbol: String(form.currencySymbol || '').trim() || '৳',
 //       invoicePrefix: String(form.invoicePrefix || 'INV').trim().toUpperCase() || 'INV',
 //       defaultMinStock: Math.max(0, Number(form.defaultMinStock ?? 5))
@@ -144,6 +184,9 @@
 
 //   const handleResetDefaults = async () => {
 //     if (!confirm('Reset all ERP settings to default values?')) return;
+//     if (fileInputRef.current) {
+//       fileInputRef.current.value = '';
+//     }
 //     await persistSettings({ ...DEFAULT_ERP_SETTINGS }, 'Default settings restored.');
 //   };
 
@@ -193,7 +236,7 @@
 //             System Settings
 //           </h2>
 //           <p className="text-xs sm:text-sm text-slate-500">
-//             Configure business profile, billing defaults, print preferences, and data backups.
+//             Configure business profile, logo, billing defaults, print preferences, and data backups.
 //           </p>
 //         </div>
 
@@ -258,8 +301,62 @@
 //               <div className="border-b border-slate-100 pb-3">
 //                 <h3 className="font-bold text-slate-800">Company & Receipt Information</h3>
 //                 <p className="text-xs text-slate-500">
-//                   Displayed on printed invoices, ledgers, and accounting reports.
+//                   Displayed in sidebar, login screen, printed invoices, ledgers, and reports.
 //                 </p>
+//               </div>
+
+//               {/* Company Logo Upload & Preview */}
+//               <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/80 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+//                 <div className="flex items-center gap-4">
+//                   <div className="w-16 h-16 rounded-2xl bg-white border border-slate-200 flex items-center justify-center overflow-hidden shrink-0 shadow-xs">
+//                     {form.logoUrl ? (
+//                       <img
+//                         src={form.logoUrl}
+//                         alt="Company Logo Preview"
+//                         className="w-full h-full object-contain p-1"
+//                       />
+//                     ) : (
+//                       <ImageIcon className="w-7 h-7 text-slate-400" />
+//                     )}
+//                   </div>
+//                   <div>
+//                     <p className="text-xs font-bold text-slate-700 uppercase tracking-wide">
+//                       Company Logo
+//                     </p>
+//                     <p className="text-xs text-slate-500 mt-0.5">
+//                       Upload PNG, JPG, or WEBP (max 2MB) for sidebar, login & invoice headers.
+//                     </p>
+//                     <input
+//                       ref={fileInputRef}
+//                       type="file"
+//                       accept="image/*"
+//                       onChange={handleLogoFileChange}
+//                       className="hidden"
+//                     />
+//                   </div>
+//                 </div>
+
+//                 <div className="flex flex-wrap items-center gap-2">
+//                   <button
+//                     type="button"
+//                     onClick={() => fileInputRef.current?.click()}
+//                     className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white border border-slate-200 hover:bg-slate-100 text-slate-700 text-xs font-semibold transition"
+//                   >
+//                     <Upload className="w-3.5 h-3.5 text-indigo-600" />
+//                     {form.logoUrl ? 'Change Logo' : 'Upload Logo'}
+//                   </button>
+
+//                   {form.logoUrl && (
+//                     <button
+//                       type="button"
+//                       onClick={handleRemoveLogo}
+//                       className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-red-50 border border-red-200 hover:bg-red-100 text-red-600 text-xs font-semibold transition"
+//                     >
+//                       <Trash2 className="w-3.5 h-3.5" />
+//                       Remove
+//                     </button>
+//                   )}
+//                 </div>
 //               </div>
 
 //               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -548,12 +645,15 @@
 // }
 
 
+
 import { useState, useEffect, useRef } from 'react';
 import {
   Settings as SettingsIcon,
   Building2,
   Sliders,
   Database,
+  ListChecks,
+  Plus,
   Save,
   RotateCcw,
   Download,
@@ -579,31 +679,76 @@ export const DEFAULT_ERP_SETTINGS = {
   defaultPaymentMethod: 'Cash',
   defaultMobileProvider: 'bKash',
   showSignatureOnPrint: true,
-  autoReloadAfterAction: true
+  autoReloadAfterAction: true,
+  transactionTypes: ['INCOME', 'EXPENSE', 'DUE_COLLECTION', 'SUPPLIER_PAYMENT', 'OTHERS'],
+  transactionCategories: [
+    'Sales / Service Income',
+    'Office & Utility Expense',
+    'Salary & Allowance',
+    'Transport & Logistics',
+    'Due Collection',
+    'Supplier Payment',
+    'Maintenance',
+    'Others'
+  ],
+  transactionTitles: [
+    'Daily Cash Sales',
+    'Monthly Office Rent',
+    'Electricity & Internet Bill',
+    'Staff Advance / Salary',
+    'Client Due Collection',
+    'Supplier Bill Payment',
+    'Others'
+  ]
+};
+
+const normalizeList = (arr, fallback = []) => {
+  const source = Array.isArray(arr) ? arr : fallback;
+  const seen = new Set();
+  const result = [];
+  for (const item of source) {
+    const clean = String(item ?? '').trim();
+    if (!clean) continue;
+    const key = clean.toLowerCase();
+    if (!seen.has(key)) {
+      seen.add(key);
+      result.push(clean);
+    }
+  }
+  return result.length ? result : [...fallback];
 };
 
 const pickKnownSettings = (rawObj = {}) => {
   const cleaned = {};
   for (const key of Object.keys(DEFAULT_ERP_SETTINGS)) {
     if (rawObj[key] !== undefined && rawObj[key] !== null) {
-      cleaned[key] = rawObj[key];
+      if (Array.isArray(DEFAULT_ERP_SETTINGS[key])) {
+        cleaned[key] = normalizeList(rawObj[key], DEFAULT_ERP_SETTINGS[key]);
+      } else {
+        cleaned[key] = rawObj[key];
+      }
     }
   }
   return cleaned;
 };
 
-export const loadErpSettings = () => ({ ...DEFAULT_ERP_SETTINGS });
+export const loadErpSettings = () => ({
+  ...DEFAULT_ERP_SETTINGS,
+  transactionTypes: [...DEFAULT_ERP_SETTINGS.transactionTypes],
+  transactionCategories: [...DEFAULT_ERP_SETTINGS.transactionCategories],
+  transactionTitles: [...DEFAULT_ERP_SETTINGS.transactionTitles]
+});
 
 export const fetchErpSettings = async () => {
   try {
     const res = await getSettings();
     const serverData = res?.data?.settings || res?.data || {};
     return {
-      ...DEFAULT_ERP_SETTINGS,
+      ...loadErpSettings(),
       ...pickKnownSettings(serverData)
     };
   } catch {
-    return { ...DEFAULT_ERP_SETTINGS };
+    return loadErpSettings();
   }
 };
 
@@ -619,11 +764,14 @@ export default function Settings({
   onSettingsChange,
   reloadData
 }) {
-  const [activeTab, setActiveTab] = useState('COMPANY'); // 'COMPANY' | 'SYSTEM' | 'DATA'
+  const [activeTab, setActiveTab] = useState('COMPANY'); // 'COMPANY' | 'SYSTEM' | 'ACCOUNTS' | 'DATA'
   const [form, setForm] = useState(() => ({
-    ...DEFAULT_ERP_SETTINGS,
+    ...loadErpSettings(),
     ...pickKnownSettings(settings || {})
   }));
+  const [newType, setNewType] = useState('');
+  const [newCategory, setNewCategory] = useState('');
+  const [newTitle, setNewTitle] = useState('');
   const [savedNotice, setSavedNotice] = useState('');
   const [saving, setSaving] = useState(false);
   const fileInputRef = useRef(null);
@@ -657,6 +805,37 @@ export default function Settings({
     if (savedNotice) setSavedNotice('');
   };
 
+  const handleAddOption = (fieldKey, rawVal, setter, uppercase = false) => {
+    const clean = uppercase
+      ? String(rawVal || '').trim().toUpperCase().replace(/\s+/g, '_')
+      : String(rawVal || '').trim();
+    if (!clean) return;
+
+    setForm(prev => {
+      const current = Array.isArray(prev[fieldKey]) ? prev[fieldKey] : [];
+      const exists = current.some(item => item.toLowerCase() === clean.toLowerCase());
+      if (exists) return prev;
+      return {
+        ...prev,
+        [fieldKey]: [...current, clean]
+      };
+    });
+    setter('');
+    if (savedNotice) setSavedNotice('');
+  };
+
+  const handleRemoveOption = (fieldKey, targetItem) => {
+    setForm(prev => {
+      const current = Array.isArray(prev[fieldKey]) ? prev[fieldKey] : [];
+      const filtered = current.filter(item => item !== targetItem);
+      return {
+        ...prev,
+        [fieldKey]: filtered.length ? filtered : [...DEFAULT_ERP_SETTINGS[fieldKey]]
+      };
+    });
+    if (savedNotice) setSavedNotice('');
+  };
+
   const handleLogoFileChange = (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -667,7 +846,7 @@ export default function Settings({
       return;
     }
 
-    const maxBytes = 2 * 1024 * 1024; // 2MB limit for clean DB storage & fast rendering
+    const maxBytes = 2 * 1024 * 1024;
     if (file.size > maxBytes) {
       alert('Logo image size must be 2MB or less.');
       e.target.value = '';
@@ -696,7 +875,7 @@ export default function Settings({
       const res = await updateSettings(targetObj);
       const savedFromApi = res?.data?.settings || res?.data || targetObj;
       const finalSettings = {
-        ...DEFAULT_ERP_SETTINGS,
+        ...loadErpSettings(),
         ...pickKnownSettings(targetObj),
         ...pickKnownSettings(savedFromApi)
       };
@@ -719,13 +898,25 @@ export default function Settings({
   const handleSave = async (e) => {
     e.preventDefault();
     const cleaned = {
-      ...DEFAULT_ERP_SETTINGS,
+      ...loadErpSettings(),
       ...pickKnownSettings(form),
       companyName: String(form.companyName || '').trim() || DEFAULT_ERP_SETTINGS.companyName,
       logoUrl: String(form.logoUrl || '').trim(),
       currencySymbol: String(form.currencySymbol || '').trim() || '৳',
       invoicePrefix: String(form.invoicePrefix || 'INV').trim().toUpperCase() || 'INV',
-      defaultMinStock: Math.max(0, Number(form.defaultMinStock ?? 5))
+      defaultMinStock: Math.max(0, Number(form.defaultMinStock ?? 5)),
+      transactionTypes: normalizeList(
+        form.transactionTypes,
+        DEFAULT_ERP_SETTINGS.transactionTypes
+      ),
+      transactionCategories: normalizeList(
+        form.transactionCategories,
+        DEFAULT_ERP_SETTINGS.transactionCategories
+      ),
+      transactionTitles: normalizeList(
+        form.transactionTitles,
+        DEFAULT_ERP_SETTINGS.transactionTitles
+      )
     };
 
     await persistSettings(cleaned, 'Settings saved to database.');
@@ -736,7 +927,8 @@ export default function Settings({
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
-    await persistSettings({ ...DEFAULT_ERP_SETTINGS }, 'Default settings restored.');
+    const defaults = loadErpSettings();
+    await persistSettings(defaults, 'Default settings restored.');
   };
 
   const handleExportBackup = () => {
@@ -775,6 +967,66 @@ export default function Settings({
     URL.revokeObjectURL(url);
   };
 
+  const renderOptionManager = ({
+    title,
+    subtitle,
+    items = [],
+    fieldKey,
+    inputValue,
+    setInputValue,
+    placeholder,
+    uppercase = false
+  }) => (
+    <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/80 space-y-3">
+      <div>
+        <h4 className="text-sm font-bold text-slate-800">{title}</h4>
+        <p className="text-xs text-slate-500">{subtitle}</p>
+      </div>
+
+      <div className="flex gap-2">
+        <input
+          type="text"
+          value={inputValue}
+          onChange={e => setInputValue(e.target.value)}
+          onKeyDown={e => {
+            if (e.key === 'Enter') {
+              e.preventDefault();
+              handleAddOption(fieldKey, inputValue, setInputValue, uppercase);
+            }
+          }}
+          placeholder={placeholder}
+          className="flex-1 bg-white border border-slate-200 px-3 py-2 rounded-xl text-sm outline-none focus:border-indigo-500"
+        />
+        <button
+          type="button"
+          onClick={() => handleAddOption(fieldKey, inputValue, setInputValue, uppercase)}
+          className="inline-flex items-center gap-1 px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold transition cursor-pointer shrink-0"
+        >
+          <Plus className="w-4 h-4" /> Add
+        </button>
+      </div>
+
+      <div className="flex flex-wrap gap-2 pt-1">
+        {items.map(item => (
+          <span
+            key={item}
+            className="inline-flex items-center gap-1.5 bg-white text-slate-700 border border-slate-200 px-3 py-1 rounded-xl text-xs font-medium shadow-2xs"
+          >
+            <span>{item}</span>
+            <button
+              type="button"
+              onClick={() => handleRemoveOption(fieldKey, item)}
+              title={`Remove ${item}`}
+              className="text-slate-400 hover:text-rose-600 transition cursor-pointer"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+            </button>
+          </span>
+        ))}
+      </div>
+    </div>
+  );
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -785,7 +1037,7 @@ export default function Settings({
             System Settings
           </h2>
           <p className="text-xs sm:text-sm text-slate-500">
-            Configure business profile, logo, billing defaults, print preferences, and data backups.
+            Configure business profile, logo, billing defaults, account dropdowns, and data backups.
           </p>
         </div>
 
@@ -802,7 +1054,7 @@ export default function Settings({
         <button
           type="button"
           onClick={() => setActiveTab('COMPANY')}
-          className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition ${
+          className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition cursor-pointer ${
             activeTab === 'COMPANY'
               ? 'bg-indigo-600 text-white shadow-sm'
               : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'
@@ -815,7 +1067,7 @@ export default function Settings({
         <button
           type="button"
           onClick={() => setActiveTab('SYSTEM')}
-          className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition ${
+          className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition cursor-pointer ${
             activeTab === 'SYSTEM'
               ? 'bg-indigo-600 text-white shadow-sm'
               : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'
@@ -827,8 +1079,21 @@ export default function Settings({
 
         <button
           type="button"
+          onClick={() => setActiveTab('ACCOUNTS')}
+          className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition cursor-pointer ${
+            activeTab === 'ACCOUNTS'
+              ? 'bg-indigo-600 text-white shadow-sm'
+              : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'
+          }`}
+        >
+          <ListChecks className="w-4 h-4" />
+          Account Dropdowns
+        </button>
+
+        <button
+          type="button"
           onClick={() => setActiveTab('DATA')}
-          className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition ${
+          className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition cursor-pointer ${
             activeTab === 'DATA'
               ? 'bg-indigo-600 text-white shadow-sm'
               : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'
@@ -839,8 +1104,8 @@ export default function Settings({
         </button>
       </div>
 
-      {/* Tab 1 & Tab 2 Form */}
-      {(activeTab === 'COMPANY' || activeTab === 'SYSTEM') && (
+      {/* Tab 1, Tab 2 & Tab 3 Form */}
+      {(activeTab === 'COMPANY' || activeTab === 'SYSTEM' || activeTab === 'ACCOUNTS') && (
         <form
           onSubmit={handleSave}
           className="bg-white rounded-2xl shadow-sm border border-slate-200/80 p-5 sm:p-6 space-y-5"
@@ -889,7 +1154,7 @@ export default function Settings({
                   <button
                     type="button"
                     onClick={() => fileInputRef.current?.click()}
-                    className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white border border-slate-200 hover:bg-slate-100 text-slate-700 text-xs font-semibold transition"
+                    className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white border border-slate-200 hover:bg-slate-100 text-slate-700 text-xs font-semibold transition cursor-pointer"
                   >
                     <Upload className="w-3.5 h-3.5 text-indigo-600" />
                     {form.logoUrl ? 'Change Logo' : 'Upload Logo'}
@@ -899,7 +1164,7 @@ export default function Settings({
                     <button
                       type="button"
                       onClick={handleRemoveLogo}
-                      className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-red-50 border border-red-200 hover:bg-red-100 text-red-600 text-xs font-semibold transition"
+                      className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-red-50 border border-red-200 hover:bg-red-100 text-red-600 text-xs font-semibold transition cursor-pointer"
                     >
                       <Trash2 className="w-3.5 h-3.5" />
                       Remove
@@ -1111,13 +1376,57 @@ export default function Settings({
             </>
           )}
 
+          {activeTab === 'ACCOUNTS' && (
+            <>
+              <div className="border-b border-slate-100 pb-3">
+                <h3 className="font-bold text-slate-800">Account Entry Dropdown Options</h3>
+                <p className="text-xs text-slate-500">
+                  Manage options for Transaction Type, Category, and Title / Description used in Accounts.
+                </p>
+              </div>
+
+              <div className="space-y-4">
+                {renderOptionManager({
+                  title: 'Transaction Types',
+                  subtitle: 'Shown in Transaction Type * dropdown (Add / Edit entry).',
+                  items: form.transactionTypes || [],
+                  fieldKey: 'transactionTypes',
+                  inputValue: newType,
+                  setInputValue: setNewType,
+                  placeholder: 'e.g. ADVANCE_RETURN or PETTY_CASH',
+                  uppercase: true
+                })}
+
+                {renderOptionManager({
+                  title: 'Categories',
+                  subtitle: 'Shown in Category * dropdown.',
+                  items: form.transactionCategories || [],
+                  fieldKey: 'transactionCategories',
+                  inputValue: newCategory,
+                  setInputValue: setNewCategory,
+                  placeholder: 'e.g. Internet & Utility'
+                })}
+
+                {renderOptionManager({
+                  title: 'Titles / Descriptions',
+                  subtitle: 'Shown in Title / Description * dropdown.',
+                  items: form.transactionTitles || [],
+                  fieldKey: 'transactionTitles',
+                  inputValue: newTitle,
+                  setInputValue: setNewTitle,
+                  placeholder: 'e.g. Monthly Broadband Bill'
+                })}
+              </div>
+            </>
+          )}
+
           {/* Action Buttons */}
           <div className="pt-4 border-t border-slate-100 flex flex-wrap items-center justify-between gap-3">
             <button
               type="button"
               disabled={saving}
               onClick={handleResetDefaults}
-              className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-50 text-xs sm:text-sm font-medium transition"
+              className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-50 text-xs sm:text-sm font-medium transition cursor-pointer"
             >
               <RotateCcw className="w-4 h-4" />
               Reset Defaults
@@ -1126,7 +1435,7 @@ export default function Settings({
             <button
               type="submit"
               disabled={saving}
-              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-400 text-white text-xs sm:text-sm font-semibold shadow-sm transition"
+              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-400 text-white text-xs sm:text-sm font-semibold shadow-sm transition cursor-pointer"
             >
               <Save className="w-4 h-4" />
               {saving ? 'Saving...' : 'Save Settings'}
@@ -1135,7 +1444,7 @@ export default function Settings({
         </form>
       )}
 
-      {/* Tab 3: Backup & Sync */}
+      {/* Tab 4: Backup & Sync */}
       {activeTab === 'DATA' && (
         <div className="bg-white rounded-2xl shadow-sm border border-slate-200/80 p-5 sm:p-6 space-y-5">
           <div className="border-b border-slate-100 pb-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -1150,7 +1459,7 @@ export default function Settings({
                 <button
                   type="button"
                   onClick={() => reloadData()}
-                  className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-slate-200 text-slate-700 hover:bg-slate-50 text-xs sm:text-sm font-medium transition"
+                  className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-slate-200 text-slate-700 hover:bg-slate-50 text-xs sm:text-sm font-medium transition cursor-pointer"
                 >
                   <RotateCcw className="w-4 h-4 text-indigo-600" />
                   Reload Live Data
@@ -1159,7 +1468,7 @@ export default function Settings({
               <button
                 type="button"
                 onClick={handleExportBackup}
-                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs sm:text-sm font-semibold shadow-sm transition"
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs sm:text-sm font-semibold shadow-sm transition cursor-pointer"
               >
                 <Download className="w-4 h-4" />
                 Export JSON Backup

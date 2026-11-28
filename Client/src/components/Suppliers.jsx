@@ -740,7 +740,8 @@ export default function Suppliers({ suppliers = [], reloadData, settings, user }
                 />
               </div>
 
-              <div>
+              {/* Due Balance Input Hide */}
+              {/* <div>
                 <label className="block text-xs font-semibold text-slate-600 mb-1">
                   Due Balance (৳)
                 </label>
@@ -752,7 +753,7 @@ export default function Suppliers({ suppliers = [], reloadData, settings, user }
                   onChange={e => setEditForm({ ...editForm, dueBalance: e.target.value })}
                   className="w-full border border-slate-200 p-2.5 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
                 />
-              </div>
+              </div> */}
 
               <div className="pt-2 flex gap-3">
                 <button

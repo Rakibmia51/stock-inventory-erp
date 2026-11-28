@@ -353,6 +353,7 @@ const handlePrintList = () => {
       <form
         onSubmit={handleSubmit}
         className="bg-white p-4 sm:p-6 rounded-2xl shadow-sm border border-slate-200/80 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5 sm:gap-4"
+        // className="bg-white p-4 sm:p-6 rounded-2xl shadow-sm border border-slate-200/80 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3.5 sm:gap-4"
       >
         <div>
           <label className="block text-xs font-semibold text-slate-600 mb-1">Client Name *</label>
@@ -393,6 +394,16 @@ const handlePrintList = () => {
             placeholder="Address"
             value={form.address}
             onChange={e => setForm({ ...form, address: e.target.value })}
+            className="w-full border border-slate-200 p-2.5 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
+          />
+        </div>
+
+        <div>
+          <label className="block text-xs font-semibold text-slate-600 mb-1">Due Balance</label>
+          <input
+            placeholder="Due Balance"
+            value={form.dueBalance}
+            onChange={e => setForm({ ...form, dueBalance: e.target.value })}
             className="w-full border border-slate-200 p-2.5 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
           />
         </div>
